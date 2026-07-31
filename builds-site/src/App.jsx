@@ -310,7 +310,7 @@ const [posts, setPosts] = useState(SEED_POSTS);
             {navOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
-        {navOpen && (
+        {navOpen && isMobile && (
           <div style={styles.navMobile}>
             {[...nav, { id: isAdmin ? "admin" : "login", label: isAdmin ? "Admin" : "Secretariat" }].map((n) => (
               <div key={n.id} style={styles.navMobileLink} onClick={() => { setTab(n.id); setNavOpen(false); }}>
