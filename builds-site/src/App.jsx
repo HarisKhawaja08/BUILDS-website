@@ -301,7 +301,12 @@ const [posts, setPosts] = useState(SEED_POSTS);
             </span>
           </nav>
 
-          <button className="hamburger-btn" style={styles.hamburger} onClick={() => setNavOpen((v) => !v)} aria-label="Menu">
+          <button
+  className="hamburger-btn"
+  style={{
+    ...styles.hamburger,
+    display: isMobile ? "block" : "none",
+  }} onClick={() => setNavOpen((v) => !v)} aria-label="Menu">
             {navOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
