@@ -424,7 +424,7 @@ function Home({ setTab, events }) {
 function About() {
   return (
     <section style={styles.section}>
-      <div style={styles.sectionEyebrow}>ABOUT THE SOCIETY</div>
+      <div style={styles.sectionEyebrow}>ABOUT THE BUILDS H-11</div>
       <h2 style={styles.h2}>Constitution &amp; Purpose</h2>
       <div className="two-col" style={styles.twoCol}>
         <p style={styles.bodyText}>
@@ -433,8 +433,8 @@ function About() {
           weight, and to be answered by someone who has done the same.
         </p>
         <p style={styles.bodyText}>
-          We run weekly debate practice in British Parliamentary format, a literary critique circle,
-          and represent Bahria at inter-university tournaments across Islamabad and Rawalpindi.
+          We run weekly debate practice in a parliamentary format, a literary critique circle,
+          and represent Bahria H-11 campus at inter-university tournaments across Islamabad and Rawalpindi.
           Membership is open to all departments and all years; no prior debating or writing
           experience is required, only the willingness to be disagreed with.
         </p>
