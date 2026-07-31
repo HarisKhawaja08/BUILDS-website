@@ -538,34 +538,47 @@ const ORG_DEPARTMENTS = [
   {
     id: "literature",
     label: "Literature",
-    director: { role: "Director of Literature", name: "To be announced" },
-    dd: { role: "Deputy Director", name: "To be announced" },
-    coordinators: [{ role: "Coordinator, Books Club", name: "To be announced" }],
+    director: { role: "Director of Literature", name: "To be announced", photo: "/team/director-literature.jpg" },
+    dd: { role: "Deputy Director", name: "To be announced", photo: "/team/dd-literature.jpg" },
+    coordinators: [
+      { role: "Coordinator, Books Club", name: "To be announced", photo: "/team/coordinator-books-club.jpg" },
+    ],
   },
   {
     id: "debates",
     label: "Debates",
-    director: { role: "Director of Debates", name: "To be announced" },
-    dd: { role: "Deputy Director", name: "To be announced" },
+    director: { role: "Director of Debates", name: "To be announced", photo: "/team/director-debates.jpg" },
+    dd: { role: "Deputy Director", name: "To be announced", photo: "/team/dd-debates.jpg" },
     coordinators: [
-      { role: "Coordinator, MUNs", name: "To be announced" },
-      { role: "Coordinator, Debates", name: "To be announced" },
+      { role: "Coordinator, MUNs", name: "To be announced", photo: "/team/coordinator-muns.jpg" },
+      { role: "Coordinator, Debates", name: "To be announced", photo: "/team/coordinator-debates.jpg" },
     ],
   },
   {
     id: "operations",
     label: "Operations",
-    director: { role: "Director of Operations", name: "To be announced" },
-    dd: { role: "Deputy Director", name: "To be announced" },
+    director: { role: "Director of Operations", name: "To be announced", photo: "/team/director-operations.jpg" },
+    dd: { role: "Deputy Director", name: "To be announced", photo: "/team/dd-operations.jpg" },
     coordinators: [
-      { role: "Media & IT", name: "To be announced" },
-      { role: "Marketing", name: "To be announced" },
-      { role: "Logistics", name: "To be announced" },
+      { role: "Media & IT", name: "To be announced", photo: "/team/coordinator-media-it.jpg" },
+      { role: "Marketing", name: "To be announced", photo: "/team/coordinator-marketing.jpg" },
+      { role: "Logistics", name: "To be announced", photo: "/team/coordinator-logistics.jpg" },
     ],
   },
 ];
 
-function OrgAvatar({ label, size = 48 }) {
+function OrgAvatar({ label, photo, size = 48 }) {
+  const [errored, setErrored] = useState(false);
+  if (photo && !errored) {
+    return (
+      <img
+        src={photo}
+        alt={label}
+        onError={() => setErrored(true)}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", margin: "0 auto 10px", display: "block", border: "1px solid #E2E6EF" }}
+      />
+    );
+  }
   return (
     <div style={{ ...styles.orgAvatar, width: size, height: size, fontSize: size * 0.38 }}>
       {label.charAt(0)}
@@ -573,10 +586,10 @@ function OrgAvatar({ label, size = 48 }) {
   );
 }
 
-function OrgCard({ role, name, big }) {
+function OrgCard({ role, name, photo, big }) {
   return (
     <div style={big ? styles.orgCardBig : styles.orgCard}>
-      <OrgAvatar label={name} size={big ? 64 : 44} />
+      <OrgAvatar label={name} photo={photo} size={big ? 64 : 44} />
       <div style={big ? styles.orgRoleBig : styles.orgRole}>{role}</div>
       <div style={big ? styles.orgNameBig : styles.orgName}>{name}</div>
     </div>
@@ -599,7 +612,7 @@ function TheHouse() {
 
       <div style={styles.orgChart}>
         {/* President */}
-        <OrgCard role="President" name="To be announced" big />
+        <OrgCard role="President" name="To be announced" photo="/team/president.jpg" big />
         <div style={styles.orgStem} />
         <div style={styles.orgBar} />
 
@@ -608,7 +621,7 @@ function TheHouse() {
           {/* VP branch — departments live here */}
           <div style={styles.orgCol}>
             <div style={styles.orgStemShort} />
-            <OrgCard role="Vice President" name="To be announced" />
+            <OrgCard role="Vice President" name="To be announced" photo="/team/vice-president.jpg" />
             <div style={styles.orgStemShort} />
             <div style={styles.orgBar} />
 
@@ -642,9 +655,9 @@ function TheHouse() {
                   <>
                     <div style={styles.orgStemShort} />
                     {/* Level 4: Deputy Director */}
-                    <OrgCard role={activeDept.director.role} name={activeDept.director.name} />
+                    <OrgCard role={activeDept.director.role} name={activeDept.director.name} photo={activeDept.director.photo} />
                     <div style={styles.orgStemShort} />
-                    <OrgCard role={activeDept.dd.role} name={activeDept.dd.name} />
+                    <OrgCard role={activeDept.dd.role} name={activeDept.dd.name} photo={activeDept.dd.photo} />
                     <div style={styles.orgStemShort} />
                     {activeDept.coordinators.length > 1 && <div style={styles.orgBarSmall} />}
                     {/* Level 5: Coordinators — equal width, side by side */}
@@ -652,7 +665,7 @@ function TheHouse() {
                       {activeDept.coordinators.map((c) => (
                         <div key={c.role} style={styles.coordCol}>
                           {activeDept.coordinators.length > 1 && <div style={styles.orgStemTiny} />}
-                          <OrgCard role={c.role} name={c.name} />
+                          <OrgCard role={c.role} name={c.name} photo={c.photo} />
                         </div>
                       ))}
                     </div>
@@ -665,7 +678,7 @@ function TheHouse() {
           {/* GS branch — no departments here */}
           <div style={styles.orgCol}>
             <div style={styles.orgStemShort} />
-            <OrgCard role="General Secretary" name="To be announced" />
+            <OrgCard role="General Secretary" name="To be announced" photo="/team/general-secretary.jpg" />
             <div style={styles.orgStemShort} />
             <div style={styles.orgCardStatic}>
               <OrgAvatar label="Board of Directors" size={40} />
