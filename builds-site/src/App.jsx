@@ -586,12 +586,12 @@ function OrgAvatar({ label, photo, size = 48 }) {
   );
 }
 
-function OrgCard({ role, name, photo, big }) {
+function OrgCard({ role, name, photo }) {
   return (
-    <div style={big ? styles.orgCardBig : styles.orgCard}>
-      <OrgAvatar label={name} photo={photo} size={big ? 128 : 96} />
-      <div style={big ? styles.orgRoleBig : styles.orgRole}>{role}</div>
-      <div style={big ? styles.orgNameBig : styles.orgName}>{name}</div>
+    <div style={styles.orgCardBig}>
+      <OrgAvatar label={name} photo={photo} size={128} />
+      <div style={styles.orgRoleBig}>{role}</div>
+      <div style={styles.orgNameBig}>{name}</div>
     </div>
   );
 }
