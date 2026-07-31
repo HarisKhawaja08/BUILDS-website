@@ -81,6 +81,18 @@ function fmtDate(iso) {
 }
 const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
+// Urdu/Arabic-script Unicode ranges — used to auto-detect Urdu dispatches
+// and switch them to a proper Nastaliq font instead of the Latin serif.
+const URDU_SCRIPT_RE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+function isUrduText(text = "") {
+  return URDU_SCRIPT_RE.test(text);
+}
+function urduStyle(text) {
+  return isUrduText(text)
+    ? { fontFamily: "'Noto Nastaliq Urdu', serif", direction: "rtl", textAlign: "right", lineHeight: 2.2 }
+    : {};
+}
+
 export default function BuildsSite() {
   const [tab, setTab] = useState("home");
   const [navOpen, setNavOpen] = useState(false);
@@ -498,8 +510,8 @@ function Blog({ posts, openPost, setOpenPost }) {
       <section style={{ ...styles.section, maxWidth: 720 }}>
         <div style={styles.backLink} onClick={() => setOpenPost(null)}>← All dispatches</div>
         <div style={styles.sectionEyebrow}>{fmtDate(active.date)} · {active.author}</div>
-        <h2 style={styles.h2}>{active.title}</h2>
-        <p style={{ ...styles.bodyText, fontSize: 18, lineHeight: 1.8 }}>{active.content}</p>
+        <h2 style={{ ...styles.h2, ...urduStyle(active.title) }}>{active.title}</h2>
+        <p style={{ ...styles.bodyText, fontSize: 18, lineHeight: 1.8, ...urduStyle(active.content) }}>{active.content}</p>
       </section>
     );
   }
@@ -511,8 +523,8 @@ function Blog({ posts, openPost, setOpenPost }) {
         {posts.map((p) => (
           <div key={p.id} className="ev-card" style={styles.postCard} onClick={() => setOpenPost(p.id)}>
             <div style={styles.postMeta}>{fmtDate(p.date)} · {p.author}</div>
-            <div style={styles.postTitle}>{p.title}</div>
-            <div style={styles.postExcerpt}>{p.excerpt}</div>
+            <div style={{ ...styles.postTitle, ...urduStyle(p.title) }}>{p.title}</div>
+            <div style={{ ...styles.postExcerpt, ...urduStyle(p.excerpt) }}>{p.excerpt}</div>
             <div style={styles.readMore}>Read dispatch <ChevronRight size={14} /></div>
           </div>
         ))}
@@ -574,6 +586,7 @@ function OrgCard({ role, name, big }) {
 function TheHouse() {
   const [openDept, setOpenDept] = useState(null);
   const toggle = (id) => setOpenDept((cur) => (cur === id ? null : id));
+  const activeDept = ORG_DEPARTMENTS.find((d) => d.id === openDept) || null;
 
   return (
     <section style={styles.section}>
@@ -599,6 +612,7 @@ function TheHouse() {
             <div style={styles.orgStemShort} />
             <div style={styles.orgBar} />
 
+            {/* Level 3: department buttons — always in an equal-width grid so all three stay level, whichever is expanded */}
             <div className="org-row-3" style={styles.orgRow3}>
               {ORG_DEPARTMENTS.map((dept) => {
                 const isOpen = openDept === dept.id;
@@ -616,28 +630,35 @@ function TheHouse() {
                         style={{ transition: "transform 300ms ease", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
                       />
                     </button>
-
-                    <div style={{ ...styles.expandWrap, ...(isOpen ? styles.expandWrapOpen : {}) }}>
-                      <div style={styles.expandInner}>
-                        <div style={styles.orgStemShort} />
-                        <OrgCard role={dept.director.role} name={dept.director.name} />
-                        <div style={styles.orgStemShort} />
-                        <OrgCard role={dept.dd.role} name={dept.dd.name} />
-                        <div style={styles.orgStemShort} />
-                        {dept.coordinators.length > 1 && <div style={styles.orgBarSmall} />}
-                        <div style={styles.coordStack}>
-                          {dept.coordinators.map((c) => (
-                            <div key={c.role} style={styles.coordCol}>
-                              {dept.coordinators.length > 1 && <div style={styles.orgStemTiny} />}
-                              <OrgCard role={c.role} name={c.name} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 );
               })}
+            </div>
+
+            {/* Expanded directorate — one shared full-width panel, so it never fights the button grid for width, and level 5 coordinators can sit in a true horizontal row */}
+            <div style={{ ...styles.expandWrap, ...(activeDept ? styles.expandWrapOpen : {}) }}>
+              <div style={styles.expandInner}>
+                {activeDept && (
+                  <>
+                    <div style={styles.orgStemShort} />
+                    {/* Level 4: Deputy Director */}
+                    <OrgCard role={activeDept.director.role} name={activeDept.director.name} />
+                    <div style={styles.orgStemShort} />
+                    <OrgCard role={activeDept.dd.role} name={activeDept.dd.name} />
+                    <div style={styles.orgStemShort} />
+                    {activeDept.coordinators.length > 1 && <div style={styles.orgBarSmall} />}
+                    {/* Level 5: Coordinators — equal width, side by side */}
+                    <div style={styles.coordRow}>
+                      {activeDept.coordinators.map((c) => (
+                        <div key={c.role} style={styles.coordCol}>
+                          {activeDept.coordinators.length > 1 && <div style={styles.orgStemTiny} />}
+                          <OrgCard role={c.role} name={c.name} />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1082,13 +1103,12 @@ const styles = {
   deptButton: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#16233F", color: "#FFFFFF", border: "none", borderRadius: 4, padding: "14px 16px", fontFamily: utility, fontSize: 13.5, fontWeight: 600, letterSpacing: 0.5, cursor: "pointer", boxShadow: "0 2px 8px rgba(22,35,63,0.15)", width: "100%" },
   deptButtonOpen: { background: "#0F1830" },
 
-  expandWrap: { display: "grid", gridTemplateRows: "0fr", opacity: 0, transition: "grid-template-rows 420ms cubic-bezier(0.4,0,0.2,1), opacity 320ms ease", width: "100%" },
+  expandWrap: { display: "grid", gridTemplateRows: "0fr", opacity: 0, transition: "grid-template-rows 480ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease", width: "100%" },
   expandWrapOpen: { gridTemplateRows: "1fr", opacity: 1 },
   expandInner: { overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center" },
 
-  coordRow: { display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", marginTop: 0 },
-  coordStack: { display: "flex", flexDirection: "column", alignItems: "center", gap: 14, width: "100%" },
-  coordCol: { display: "flex", flexDirection: "column", alignItems: "center", width: "100%" },
+  coordRow: { display: "flex", gap: 24, justifyContent: "center", flexWrap: "wrap", marginTop: 0, width: "100%" },
+  coordCol: { display: "flex", flexDirection: "column", alignItems: "center" },
 
   galleryGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 24 },
   galleryTile: { aspectRatio: "4/3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16 },
