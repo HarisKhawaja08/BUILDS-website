@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Menu, X, Calendar, BookOpen, Users, Image as ImageIcon, Mail,
   Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, MapPin, Clock,
+  Instagram, MessageCircle,
 } from "lucide-react";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -97,7 +98,7 @@ export default function BuildsSite() {
 
   const [openPost, setOpenPost] = useState(null);
 
-  const [joinForm, setJoinForm] = useState({ name: "", email: "", department: "", message: "" });
+  const [joinForm, setJoinForm] = useState({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
   const [joinSent, setJoinSent] = useState(false);
 
   /* ---------- real admin auth (Firebase) — persists across refresh ---------- */
@@ -202,13 +203,14 @@ export default function BuildsSite() {
       setImages((prev) => prev.filter((g) => g.id !== id));
     } catch (e) { console.error(e); }
   };
+  const removeSubmission = (id) => persistSubmissions(submissions.filter((s) => s.id !== id));
 
   const submitJoin = async (e) => {
     e.preventDefault();
-    if (!joinForm.name || !joinForm.email) return;
+    if (!joinForm.name || !joinForm.enrollment || !joinForm.department || !joinForm.email || !joinForm.whatsapp) return;
     const entry = { ...joinForm, id: "s" + Date.now(), date: new Date().toISOString() };
     await persistSubmissions([entry, ...submissions]);
-    setJoinForm({ name: "", email: "", department: "", message: "" });
+    setJoinForm({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
     setJoinSent(true);
     setTimeout(() => setJoinSent(false), 4000);
   };
@@ -316,7 +318,7 @@ export default function BuildsSite() {
           <AdminPanel
             events={events} addEvent={addEvent} removeEvent={removeEvent}
             posts={posts} addPost={addPost} removePost={removePost}
-            submissions={submissions}
+            submissions={submissions} removeSubmission={removeSubmission}
             images={images} addImage={addImage} removeImage={removeImage}
             logout={() => { signOut(auth); setTab("home"); }}
           />
@@ -347,6 +349,12 @@ export default function BuildsSite() {
               <div style={styles.footerHead}>Contact</div>
               <div style={styles.footerLink}>builds@bahria.edu.pk</div>
               <div style={styles.footerLink}>Bahria University, Islamabad</div>
+              <a href="https://instagram.com/builds_h11" target="_blank" rel="noopener noreferrer" style={styles.footerSocialLink}>
+                <Instagram size={15} /> @builds_h11
+              </a>
+              <a href="https://wa.me/923466291929" target="_blank" rel="noopener noreferrer" style={styles.footerWhatsappBtn}>
+                <MessageCircle size={15} /> Chat on WhatsApp
+              </a>
             </div>
           </div>
         </div>
@@ -706,15 +714,36 @@ function Join({ joinForm, setJoinForm, submitJoin, joinSent }) {
         <label style={styles.label}>Full name</label>
         <input style={styles.input} value={joinForm.name}
           onChange={(e) => setJoinForm({ ...joinForm, name: e.target.value })} required />
+
+        <label style={styles.label}>Enrollment number</label>
+        <input style={styles.input} value={joinForm.enrollment} placeholder="e.g. 01-134221-000"
+          onChange={(e) => setJoinForm({ ...joinForm, enrollment: e.target.value })} required />
+
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Department</label>
+            <input style={styles.input} value={joinForm.department} placeholder="e.g. BSCS"
+              onChange={(e) => setJoinForm({ ...joinForm, department: e.target.value })} required />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Semester</label>
+            <input style={styles.input} value={joinForm.semester} placeholder="e.g. 3rd"
+              onChange={(e) => setJoinForm({ ...joinForm, semester: e.target.value })} />
+          </div>
+        </div>
+
         <label style={styles.label}>Email</label>
         <input type="email" style={styles.input} value={joinForm.email}
           onChange={(e) => setJoinForm({ ...joinForm, email: e.target.value })} required />
-        <label style={styles.label}>Department &amp; year</label>
-        <input style={styles.input} value={joinForm.department}
-          onChange={(e) => setJoinForm({ ...joinForm, department: e.target.value })} placeholder="e.g. BSCS, 2nd year" />
-        <label style={styles.label}>Why do you want to join? (optional)</label>
-        <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical" }} value={joinForm.message}
-          onChange={(e) => setJoinForm({ ...joinForm, message: e.target.value })} />
+
+        <label style={styles.label}>WhatsApp contact</label>
+        <input type="tel" style={styles.input} value={joinForm.whatsapp} placeholder="e.g. 03001234567"
+          onChange={(e) => setJoinForm({ ...joinForm, whatsapp: e.target.value })} required />
+
+        <label style={styles.label}>Why do you want to join?</label>
+        <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical" }} value={joinForm.reason}
+          onChange={(e) => setJoinForm({ ...joinForm, reason: e.target.value })} />
+
         <button type="submit" className="btn-maroon" style={{ ...styles.btnPrimary, marginTop: 8, alignSelf: "flex-start" }}>
           <Mail size={16} /> Submit Application
         </button>
@@ -758,7 +787,7 @@ function AdminLogin({ emailInput, setEmailInput, pwInput, setPwInput, handleLogi
   );
 }
 
-function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost, submissions, images, addImage, removeImage, logout }) {
+function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost, submissions, removeSubmission, images, addImage, removeImage, logout }) {
   const [panel, setPanel] = useState("events");
   const [ev, setEv] = useState({ title: "", date: "", time: "", venue: "", motion: "", description: "" });
   const [post, setPost] = useState({ title: "", author: "", excerpt: "", content: "" });
@@ -932,12 +961,14 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
         <div style={{ marginTop: 24 }}>
           {submissions.length === 0 && <div style={styles.emptyNote}>No applications yet.</div>}
           {submissions.map((s) => (
-            <div key={s.id} style={styles.adminListItem}>
+            <div key={s.id} style={{ ...styles.adminListItem, alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontWeight: 600 }}>{s.name} — {s.department || "—"}</div>
-                <div style={{ fontSize: 13, color: "#5B6478" }}>{s.email}</div>
-                {s.message && <div style={{ fontSize: 13, marginTop: 4, color: "#232B3D" }}>{s.message}</div>}
+                <div style={{ fontWeight: 600 }}>{s.name} — {s.department || "—"}{s.semester ? `, ${s.semester} semester` : ""}</div>
+                <div style={{ fontSize: 13, color: "#5B6478", marginTop: 2 }}>Enrollment: {s.enrollment || "—"}</div>
+                <div style={{ fontSize: 13, color: "#5B6478" }}>{s.email} · WhatsApp: {s.whatsapp || "—"}</div>
+                {s.reason && <div style={{ fontSize: 13, marginTop: 6, color: "#232B3D" }}>{s.reason}</div>}
               </div>
+              <Trash2 size={17} style={{ cursor: "pointer", color: "#2C4A82", flexShrink: 0, marginTop: 2 }} onClick={() => removeSubmission(s.id)} />
             </div>
           ))}
         </div>
@@ -967,7 +998,8 @@ const styles = {
   navDesktop: { display: "flex", gap: 28, alignItems: "center" },
   navLink: { fontFamily: utility, fontSize: 12.5, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", color: "#16233F", fontWeight: 500 },
   hamburger: { display: "none", background: "none", border: "none", color: "#16233F", cursor: "pointer" },
-  navMobile: { display: "none" },
+  navMobile: { display: "flex", flexDirection: "column", background: "#FFFFFF", borderTop: "1px solid #E2E6EF", padding: "8px 24px 16px" },
+  navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "#16233F", padding: "14px 0", borderBottom: "1px solid #F0F2F7", cursor: "pointer" },
   headerRule: { height: 1, background: "#16233F", maxWidth: 1080, margin: "0 auto" },
   main: { maxWidth: 1080, margin: "0 auto", padding: "0 24px" },
 
@@ -1085,5 +1117,7 @@ const styles = {
   footerCols: { display: "flex", gap: 60, flexWrap: "wrap" },
   footerHead: { fontFamily: utility, fontSize: 11.5, letterSpacing: 1, color: "#5C6B8C", textTransform: "uppercase", fontWeight: 600, marginBottom: 12 },
   footerLink: { fontFamily: utility, fontSize: 13.5, color: "#E2E6EF", marginBottom: 8, cursor: "pointer" },
+  footerSocialLink: { fontFamily: utility, fontSize: 13.5, color: "#E2E6EF", marginBottom: 8, display: "flex", alignItems: "center", gap: 7, textDecoration: "none" },
+  footerWhatsappBtn: { fontFamily: utility, fontSize: 13, fontWeight: 600, letterSpacing: 0.3, color: "#16233F", background: "#FFFFFF", display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", padding: "9px 14px", borderRadius: 3, marginTop: 6 },
   footerBottom: { borderTop: "1px solid #2C3A5C", textAlign: "center", padding: "18px 0", fontFamily: utility, fontSize: 12, color: "#7C8399" },
 };
