@@ -81,8 +81,24 @@ function fmtDate(iso) {
 const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 export default function BuildsSite() {
+  
   const [tab, setTab] = useState("home");
-  const [navOpen, setNavOpen] = useState(false);
+const [navOpen, setNavOpen] = useState(false);
+
+const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+useEffect(() => {
+  const handleResize = () => {
+    setIsMobile(window.innerWidth <= 768);
+  };
+
+  window.addEventListener("resize", handleResize);
+
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
+
+const [events, setEvents] = useState(SEED_EVENTS);
+const [posts, setPosts] = useState(SEED_POSTS);
 
   const [events, setEvents] = useState(SEED_EVENTS);
   const [posts, setPosts] = useState(SEED_POSTS);
