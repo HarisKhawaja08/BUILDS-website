@@ -81,24 +81,8 @@ function fmtDate(iso) {
 const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 export default function BuildsSite() {
-  
   const [tab, setTab] = useState("home");
-const [navOpen, setNavOpen] = useState(false);
-
-const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-useEffect(() => {
-  const handleResize = () => {
-    setIsMobile(window.innerWidth <= 768);
-  };
-
-  window.addEventListener("resize", handleResize);
-
-  return () => window.removeEventListener("resize", handleResize);
-}, []);
-
-const [events, setEvents] = useState(SEED_EVENTS);
-const [posts, setPosts] = useState(SEED_POSTS);
+  const [navOpen, setNavOpen] = useState(false);
 
   const [events, setEvents] = useState(SEED_EVENTS);
   const [posts, setPosts] = useState(SEED_POSTS);
@@ -301,28 +285,19 @@ const [posts, setPosts] = useState(SEED_POSTS);
             </span>
           </nav>
 
-          <button
-  className="hamburger-btn"
-  style={{
-    ...styles.hamburger,
-    display: isMobile ? "block" : "none",
-  }} onClick={() => {
-  alert("clicked");
-  setNavOpen((v) => !v);
-}} aria-label="Menu">
+          <button className="hamburger-btn" style={styles.hamburger} onClick={() => setNavOpen((v) => !v)} aria-label="Menu">
             {navOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
-        <div
-  style={{
-    background: "red",
-    color: "white",
-    padding: "20px",
-    fontSize: "24px",
-  }}
->
-  TEST MENU
-</div>
+        {navOpen && (
+          <div style={styles.navMobile}>
+            {[...nav, { id: isAdmin ? "admin" : "login", label: isAdmin ? "Admin" : "Secretariat" }].map((n) => (
+              <div key={n.id} style={styles.navMobileLink} onClick={() => { setTab(n.id); setNavOpen(false); }}>
+                {n.label}
+              </div>
+            ))}
+          </div>
+        )}
         <div style={styles.headerRule} />
       </header>
 
@@ -449,7 +424,7 @@ function Home({ setTab, events }) {
 function About() {
   return (
     <section style={styles.section}>
-      <div style={styles.sectionEyebrow}>ABOUT THE BUILDS H-11</div>
+      <div style={styles.sectionEyebrow}>ABOUT THE SOCIETY</div>
       <h2 style={styles.h2}>Constitution &amp; Purpose</h2>
       <div className="two-col" style={styles.twoCol}>
         <p style={styles.bodyText}>
@@ -458,8 +433,8 @@ function About() {
           weight, and to be answered by someone who has done the same.
         </p>
         <p style={styles.bodyText}>
-          We run weekly debate practice in a parliamentary format, a literary critique circle,
-          and represent Bahria H-11 campus at inter-university tournaments across Islamabad and Rawalpindi.
+          We run weekly debate practice in British Parliamentary format, a literary critique circle,
+          and represent Bahria at inter-university tournaments across Islamabad and Rawalpindi.
           Membership is open to all departments and all years; no prior debating or writing
           experience is required, only the willingness to be disagreed with.
         </p>
