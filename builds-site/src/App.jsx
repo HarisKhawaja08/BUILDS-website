@@ -575,12 +575,12 @@ function OrgAvatar({ label, photo, size = 48 }) {
         src={photo}
         alt={label}
         onError={() => setErrored(true)}
-        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", margin: "0 auto 10px", display: "block", border: "1px solid #E2E6EF" }}
+        style={{ width: size, height: size, borderRadius: 6, objectFit: "cover", margin: "0 auto 12px", display: "block", border: "1px solid #E2E6EF" }}
       />
     );
   }
   return (
-    <div style={{ ...styles.orgAvatar, width: size, height: size, fontSize: size * 0.38 }}>
+    <div style={{ ...styles.orgAvatar, width: size, height: size, fontSize: size * 0.34 }}>
       {label.charAt(0)}
     </div>
   );
@@ -589,7 +589,7 @@ function OrgAvatar({ label, photo, size = 48 }) {
 function OrgCard({ role, name, photo, big }) {
   return (
     <div style={big ? styles.orgCardBig : styles.orgCard}>
-      <OrgAvatar label={name} photo={photo} size={big ? 64 : 44} />
+      <OrgAvatar label={name} photo={photo} size={big ? 128 : 96} />
       <div style={big ? styles.orgRoleBig : styles.orgRole}>{role}</div>
       <div style={big ? styles.orgNameBig : styles.orgName}>{name}</div>
     </div>
@@ -1093,9 +1093,9 @@ const styles = {
   teamName: { fontFamily: serif, fontSize: 17, fontWeight: 700, color: "#16233F" },
 
   orgChart: { display: "flex", flexDirection: "column", alignItems: "center", marginTop: 28 },
-  orgAvatar: { borderRadius: "50%", background: "#16233F", color: "#FFFFFF", fontFamily: serif, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px", flexShrink: 0 },
-  orgCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderRadius: 4, padding: "16px 14px", textAlign: "center", width: "100%", maxWidth: 180, boxShadow: "0 2px 6px rgba(22,35,63,0.05)" },
-  orgCardBig: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderRadius: 4, padding: "22px 20px", textAlign: "center", width: "100%", maxWidth: 220, boxShadow: "0 4px 14px rgba(22,35,63,0.08)" },
+  orgAvatar: { borderRadius: 6, background: "#16233F", color: "#FFFFFF", fontFamily: serif, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", flexShrink: 0 },
+  orgCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderRadius: 4, padding: "18px 16px", textAlign: "center", width: "100%", maxWidth: 220, boxShadow: "0 2px 6px rgba(22,35,63,0.05)" },
+  orgCardBig: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderRadius: 4, padding: "26px 24px", textAlign: "center", width: "100%", maxWidth: 280, boxShadow: "0 4px 14px rgba(22,35,63,0.08)" },
   orgCardStatic: { background: "#FFFFFF", border: "1px dashed #E2E6EF", borderRadius: "50%", width: 96, height: 96, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 8 },
   orgRole: { fontFamily: utility, fontSize: 10.5, letterSpacing: 0.4, color: "#2C4A82", textTransform: "uppercase", fontWeight: 600, marginBottom: 2 },
   orgRoleBig: { fontFamily: utility, fontSize: 12, letterSpacing: 0.6, color: "#2C4A82", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 },
