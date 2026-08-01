@@ -124,6 +124,7 @@ export default function BuildsSite() {
 
   const [joinForm, setJoinForm] = useState({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
   const [joinSent, setJoinSent] = useState(false);
+  const [joinError, setJoinError] = useState("");
 
   /* ---------- real admin auth (Firebase) — persists across refresh ---------- */
   useEffect(() => {
@@ -170,17 +171,29 @@ export default function BuildsSite() {
   useEffect(() => {
     (async () => {
       try {
-        const [ev, po, su, galIdx] = await Promise.all([
+        const [ev, po, subIdx, galIdx] = await Promise.all([
           window.storage.get("builds:events", true).catch(() => null),
           window.storage.get("builds:posts", true).catch(() => null),
-          window.storage.get("builds:submissions", true).catch(() => null),
+          window.storage.list("builds:submissions:app:", true).catch(() => ({ keys: [] })),
           window.storage.list("builds:gallery:img:", true).catch(() => ({ keys: [] })),
         ]);
         if (ev?.value) setEvents(JSON.parse(ev.value));
         else await window.storage.set("builds:events", JSON.stringify(SEED_EVENTS), true);
         if (po?.value) setPosts(JSON.parse(po.value));
         else await window.storage.set("builds:posts", JSON.stringify(SEED_POSTS), true);
-        if (su?.value) setSubmissions(JSON.parse(su.value));
+
+        const subItems = await Promise.all(
+          (subIdx?.keys || []).map(async (k) => {
+            try {
+              const r = await window.storage.get(k, true);
+              const data = JSON.parse(r.value);
+              return { id: k.slice("builds:submissions:app:".length), ...data };
+            } catch {
+              return null;
+            }
+          })
+        );
+        setSubmissions(subItems.filter(Boolean).sort((a, b) => (b.date || "").localeCompare(a.date || "")));
 
         const galItems = await Promise.all(
           (galIdx?.keys || []).map(async (k) => {
@@ -210,11 +223,6 @@ export default function BuildsSite() {
   const persistPosts = useCallback(async (next) => {
     setPosts(next);
     try { await window.storage.set("builds:posts", JSON.stringify(next), true); }
-    catch (e) { console.error(e); }
-  }, []);
-  const persistSubmissions = useCallback(async (next) => {
-    setSubmissions(next);
-    try { await window.storage.set("builds:submissions", JSON.stringify(next), true); }
     catch (e) { console.error(e); }
   }, []);
 
@@ -251,16 +259,29 @@ export default function BuildsSite() {
       setImages((prev) => prev.filter((g) => g.id !== id));
     } catch (e) { console.error(e); }
   };
-  const removeSubmission = (id) => persistSubmissions(submissions.filter((s) => s.id !== id));
+  const removeSubmission = async (id) => {
+    try {
+      await window.storage.delete(`builds:submissions:app:${id}`, true);
+      setSubmissions((prev) => prev.filter((s) => s.id !== id));
+    } catch (e) { console.error(e); }
+  };
 
   const submitJoin = async (e) => {
     e.preventDefault();
     if (!joinForm.name || !joinForm.enrollment || !joinForm.department || !joinForm.email || !joinForm.whatsapp) return;
-    const entry = { ...joinForm, id: "s" + Date.now(), date: new Date().toISOString() };
-    await persistSubmissions([entry, ...submissions]);
-    setJoinForm({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
-    setJoinSent(true);
-    setTimeout(() => setJoinSent(false), 4000);
+    const id = "s" + Date.now();
+    const entry = { ...joinForm, date: new Date().toISOString() };
+    setJoinError("");
+    try {
+      await window.storage.set(`builds:submissions:app:${id}`, JSON.stringify(entry), true);
+      setSubmissions((prev) => [{ id, ...entry }, ...prev]);
+      setJoinForm({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
+      setJoinSent(true);
+      setTimeout(() => setJoinSent(false), 4000);
+    } catch (err) {
+      console.error("submitJoin failed", err);
+      setJoinError("Something went wrong submitting your application — please try again, or reach us directly on WhatsApp.");
+    }
   };
 
   const nav = [
@@ -402,7 +423,7 @@ export default function BuildsSite() {
         {tab === "blog" && <Blog posts={posts} openPost={openPost} setOpenPost={setOpenPost} />}
         {tab === "team" && <TheHouse />}
         {tab === "gallery" && <Gallery images={images} />}
-        {tab === "join" && <Join joinForm={joinForm} setJoinForm={setJoinForm} submitJoin={submitJoin} joinSent={joinSent} />}
+        {tab === "join" && <Join joinForm={joinForm} setJoinForm={setJoinForm} submitJoin={submitJoin} joinSent={joinSent} joinError={joinError} />}
         {tab === "login" && (
           <AdminLogin emailInput={emailInput} setEmailInput={setEmailInput} pwInput={pwInput} setPwInput={setPwInput} handleLogin={handleLogin} loginError={loginError} />
         )}
@@ -815,7 +836,7 @@ function Gallery({ images = [] }) {
   );
 }
 
-function Join({ joinForm, setJoinForm, submitJoin, joinSent }) {
+function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError }) {
   return (
     <section style={{ ...styles.section, maxWidth: 640 }}>
       <div style={styles.sectionEyebrow}>MEMBERSHIP</div>
@@ -862,6 +883,7 @@ function Join({ joinForm, setJoinForm, submitJoin, joinSent }) {
           <Mail size={16} /> Submit Application
         </button>
         {joinSent && <div style={styles.successNote}>Thank you — your application has been recorded.</div>}
+        {joinError && <div style={styles.errorNote}>{joinError}</div>}
       </form>
     </section>
   );
