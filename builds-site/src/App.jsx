@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Menu, X, Calendar, BookOpen, Users, Image as ImageIcon, Mail,
   Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, MapPin, Clock,
-  Instagram, MessageCircle,
+  Instagram, MessageCircle, Sun, Moon,
 } from "lucide-react";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -96,6 +96,18 @@ function urduStyle(text) {
 export default function BuildsSite() {
   const [tab, setTab] = useState("home");
   const [navOpen, setNavOpen] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem("builds:theme");
+      if (saved === "light" || saved === "dark") return saved;
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+    } catch (e) { /* ignore — localStorage/matchMedia unavailable */ }
+    return "light";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("builds:theme", theme); } catch (e) { /* ignore */ }
+  }, [theme]);
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
 
   const [events, setEvents] = useState(SEED_EVENTS);
   const [posts, setPosts] = useState(SEED_POSTS);
@@ -238,23 +250,57 @@ export default function BuildsSite() {
   ];
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} data-theme={theme}>
       <style>{`
+        :root, [data-theme="light"] {
+          --bg: #FFFFFF;
+          --surface: #FFFFFF;
+          --ink: #16233F;
+          --ink-body: #232B3D;
+          --ink-secondary: #3B4458;
+          --ink-muted: #5B6478;
+          --ink-faint: #8891A3;
+          --border: #E2E6EF;
+          --accent: #2C4A82;
+          --brand: #16233F;
+          --brand-hover: #0F1830;
+          --success-bg: #EEF3E8;
+          --success-border: #C3D6AE;
+          --success-text: #3D5A2A;
+        }
+        [data-theme="dark"] {
+          --bg: #0B1220;
+          --surface: #131B2E;
+          --ink: #F1F3F9;
+          --ink-body: #E6E9F2;
+          --ink-secondary: #C7CCDC;
+          --ink-muted: #98A1BA;
+          --ink-faint: #6C7591;
+          --border: #263252;
+          --accent: #7FA8F0;
+          --brand: #35507F;
+          --brand-hover: #4A6BA0;
+          --success-bg: #16231A;
+          --success-border: #3A5240;
+          --success-text: #A9D8A0;
+        }
+        [data-theme] { transition: background-color .25s ease, color .25s ease, border-color .25s ease; }
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,600&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
         * { box-sizing: border-box; }
         .builds-link { position: relative; }
         .builds-link:after {
           content: ""; position: absolute; left: 0; bottom: -4px; height: 1px; width: 0%;
-          background: #2C4A82; transition: width .25s ease;
+          background: var(--accent); transition: width .25s ease;
         }
         .builds-link:hover:after, .builds-link.active:after { width: 100%; }
         .ev-card { transition: box-shadow .2s ease, transform .2s ease; }
         .ev-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(22,35,63,0.12); }
         .btn-maroon { transition: background .2s ease, transform .15s ease; }
-        .btn-maroon:hover { background: #0F1830 !important; transform: translateY(-1px); }
-        .btn-outline:hover { background: #16233F; color: #FFFFFF !important; }
+        .btn-maroon:hover { background: var(--brand-hover) !important; transform: translateY(-1px); }
+        .btn-outline:hover { background: var(--brand); color: #FFFFFF !important; }
+        .theme-toggle-btn:hover { background: var(--border); }
         input, textarea { font-family: 'Source Serif 4', serif; }
-        input:focus, textarea:focus { outline: 2px solid #5C6B8C; outline-offset: 1px; }
+        input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
         @media (max-width: 760px) {
           .nav-desktop { display: none !important; }
@@ -269,7 +315,7 @@ export default function BuildsSite() {
           .main-wrap { padding-left: 16px !important; padding-right: 16px !important; }
           .hero-section { padding-top: 48px !important; }
         }
-        button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #5C6B8C; outline-offset: 2px; }
+        button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       `}</style>
 
       {/* ---------- HEADER ---------- */}
@@ -292,12 +338,22 @@ export default function BuildsSite() {
             ))}
             <span
               className="builds-link"
-              style={{ ...styles.navLink, color: "#2C4A82" }}
+              style={{ ...styles.navLink, color: "var(--accent)" }}
               onClick={() => setTab(isAdmin ? "admin" : "login")}
             >
               {isAdmin ? "Admin" : "Secretariat"}
             </span>
           </nav>
+
+          <button
+            className="theme-toggle-btn"
+            style={styles.themeToggle}
+            onClick={toggleTheme}
+            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
 
           <button className="hamburger-btn" style={styles.hamburger} onClick={() => setNavOpen((v) => !v)} aria-label="Menu">
             {navOpen ? <X size={22} /> : <Menu size={22} />}
@@ -385,7 +441,7 @@ function Home({ setTab, events }) {
       <section className="hero-section" style={styles.hero}>
         <div style={styles.heroEyebrow}>ESTABLISHED · BAHRIA UNIVERSITY ISLAMABAD</div>
         <h1 style={styles.heroTitle}>
-          The House<br />believes in<br /><em style={{ color: "#2C4A82", fontStyle: "italic" }}>the argument, well made.</em>
+          The House<br />believes in<br /><em style={{ color: "var(--accent)", fontStyle: "italic" }}>the argument, well made.</em>
         </h1>
         <p style={styles.heroLede}>
           BUILDS trains speakers, publishes writers, and hosts the tournaments where
@@ -688,7 +744,7 @@ function TheHouse() {
         </div>
       </div>
 
-      <p style={{ fontSize: 12, color: "#8891A3", marginTop: 28, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 28, lineHeight: 1.6 }}>
         Placeholder names and photos above — send me the real cabinet and I'll drop them in
         (and can wire this section to the Admin panel so you can edit it yourselves).
       </p>
@@ -813,7 +869,7 @@ function AdminLogin({ emailInput, setEmailInput, pwInput, setPwInput, handleLogi
           <Lock size={16} /> Enter
         </button>
       </div>
-      <p style={{ fontSize: 12, color: "#8891A3", marginTop: 20, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 20, lineHeight: 1.6 }}>
         This signs in against the society's Firebase account — only office-bearers whose
         email was added in the Firebase console can get in.
       </p>
@@ -922,9 +978,9 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
               <div key={e.id} style={styles.adminListItem}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{e.title}</div>
-                  <div style={{ fontSize: 13, color: "#5B6478" }}>{fmtDate(e.date)} · {e.venue}</div>
+                  <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{fmtDate(e.date)} · {e.venue}</div>
                 </div>
-                <Trash2 size={17} style={{ cursor: "pointer", color: "#2C4A82" }} onClick={() => removeEvent(e.id)} />
+                <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removeEvent(e.id)} />
               </div>
             ))}
           </div>
@@ -949,9 +1005,9 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
               <div key={p.id} style={styles.adminListItem}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{p.title}</div>
-                  <div style={{ fontSize: 13, color: "#5B6478" }}>{fmtDate(p.date)} · {p.author}</div>
+                  <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{fmtDate(p.date)} · {p.author}</div>
                 </div>
-                <Trash2 size={17} style={{ cursor: "pointer", color: "#2C4A82" }} onClick={() => removePost(p.id)} />
+                <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removePost(p.id)} />
               </div>
             ))}
           </div>
@@ -972,7 +1028,7 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
             <button className="btn-maroon" style={{ ...styles.btnPrimary, alignSelf: "flex-start" }}>
               <Plus size={16} /> Add to Gallery
             </button>
-            <p style={{ fontSize: 12, color: "#8891A3", marginTop: 4, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 12, color: "var(--ink-faint)", marginTop: 4, lineHeight: 1.6 }}>
               Photos are resized in your browser before upload to keep things fast — original files never leave your device except as this resized copy.
             </p>
           </form>
@@ -984,7 +1040,7 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{img.caption || "Untitled"}</div>
                 </div>
-                <Trash2 size={17} style={{ cursor: "pointer", color: "#2C4A82", flexShrink: 0 }} onClick={() => removeImage(img.id)} />
+                <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)", flexShrink: 0 }} onClick={() => removeImage(img.id)} />
               </div>
             ))}
           </div>
@@ -998,11 +1054,11 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
             <div key={s.id} style={{ ...styles.adminListItem, alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontWeight: 600 }}>{s.name} — {s.department || "—"}{s.semester ? `, ${s.semester} semester` : ""}</div>
-                <div style={{ fontSize: 13, color: "#5B6478", marginTop: 2 }}>Enrollment: {s.enrollment || "—"}</div>
-                <div style={{ fontSize: 13, color: "#5B6478" }}>{s.email} · WhatsApp: {s.whatsapp || "—"}</div>
-                {s.reason && <div style={{ fontSize: 13, marginTop: 6, color: "#232B3D" }}>{s.reason}</div>}
+                <div style={{ fontSize: 13, color: "var(--ink-muted)", marginTop: 2 }}>Enrollment: {s.enrollment || "—"}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{s.email} · WhatsApp: {s.whatsapp || "—"}</div>
+                {s.reason && <div style={{ fontSize: 13, marginTop: 6, color: "var(--ink-body)" }}>{s.reason}</div>}
               </div>
-              <Trash2 size={17} style={{ cursor: "pointer", color: "#2C4A82", flexShrink: 0, marginTop: 2 }} onClick={() => removeSubmission(s.id)} />
+              <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)", flexShrink: 0, marginTop: 2 }} onClick={() => removeSubmission(s.id)} />
             </div>
           ))}
         </div>
@@ -1018,8 +1074,8 @@ const body = "'Source Serif 4', Georgia, serif";
 const utility = "'Inter', sans-serif";
 
 const styles = {
-  page: { background: "#FFFFFF", color: "#232B3D", minHeight: "100vh", fontFamily: body },
-  header: { position: "sticky", top: 0, zIndex: 20, background: "#FFFFFF" },
+  page: { background: "var(--bg)", color: "var(--ink-body)", minHeight: "100vh", fontFamily: body },
+  header: { position: "sticky", top: 0, zIndex: 20, background: "var(--bg)" },
   headerInner: { maxWidth: 1080, margin: "0 auto", padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" },
   brandRow: { display: "flex", alignItems: "center", gap: 12, cursor: "pointer" },
   logoImg: { height: 44, width: "auto", display: "block" },
@@ -1030,61 +1086,62 @@ const styles = {
   brandName: { fontFamily: serif, fontWeight: 700, fontSize: 20, letterSpacing: 0.5, color: "#16233F" },
   brandSub: { fontFamily: utility, fontSize: 11, letterSpacing: 0.4, color: "#5B6478", textTransform: "uppercase" },
   navDesktop: { display: "flex", gap: 28, alignItems: "center" },
-  navLink: { fontFamily: utility, fontSize: 12.5, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", color: "#16233F", fontWeight: 500 },
-  hamburger: { display: "none", background: "none", border: "none", color: "#16233F", cursor: "pointer" },
-  navMobile: { display: "flex", flexDirection: "column", background: "#FFFFFF", borderTop: "1px solid #E2E6EF", padding: "8px 24px 16px" },
-  navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "#16233F", padding: "14px 0", borderBottom: "1px solid #F0F2F7", cursor: "pointer" },
-  headerRule: { height: 1, background: "#16233F", maxWidth: 1080, margin: "0 auto" },
+  navLink: { fontFamily: utility, fontSize: 12.5, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", color: "var(--ink)", fontWeight: 500 },
+  hamburger: { display: "none", background: "none", border: "none", color: "var(--ink)", cursor: "pointer" },
+  themeToggle: { display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: "50%", background: "transparent", border: "1px solid var(--border)", color: "var(--ink)", cursor: "pointer", marginLeft: 12, flexShrink: 0 },
+  navMobile: { display: "flex", flexDirection: "column", background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "8px 24px 16px" },
+  navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "var(--ink)", padding: "14px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" },
+  headerRule: { height: 1, background: "var(--border)", maxWidth: 1080, margin: "0 auto" },
   main: { maxWidth: 1080, margin: "0 auto", padding: "0 24px" },
 
   hero: { padding: "72px 0 40px", maxWidth: 680 },
-  heroEyebrow: { fontFamily: utility, fontSize: 12, letterSpacing: 2, color: "#2C4A82", fontWeight: 600, marginBottom: 18 },
-  heroTitle: { fontFamily: serif, fontWeight: 700, fontSize: "clamp(36px, 6vw, 58px)", lineHeight: 1.08, color: "#16233F", margin: 0 },
-  heroLede: { fontSize: 18, lineHeight: 1.7, color: "#3B4458", marginTop: 24, maxWidth: 520 },
+  heroEyebrow: { fontFamily: utility, fontSize: 12, letterSpacing: 2, color: "var(--accent)", fontWeight: 600, marginBottom: 18 },
+  heroTitle: { fontFamily: serif, fontWeight: 700, fontSize: "clamp(36px, 6vw, 58px)", lineHeight: 1.08, color: "var(--ink)", margin: 0 },
+  heroLede: { fontSize: 18, lineHeight: 1.7, color: "var(--ink-secondary)", marginTop: 24, maxWidth: 520 },
   heroBtnRow: { display: "flex", gap: 14, marginTop: 32, flexWrap: "wrap" },
-  btnPrimary: { background: "#2C4A82", color: "#FFFFFF", border: "none", padding: "13px 24px", fontFamily: utility, fontSize: 13.5, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 2 },
-  btnOutline: { background: "transparent", color: "#16233F", border: "1.5px solid #16233F", padding: "13px 24px", fontFamily: utility, fontSize: 13.5, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", borderRadius: 2 },
-  btnOutlineSmall: { background: "transparent", color: "#16233F", border: "1.5px solid #16233F", padding: "9px 16px", fontFamily: utility, fontSize: 12.5, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", borderRadius: 2, display: "flex", alignItems: "center", gap: 6 },
+  btnPrimary: { background: "var(--accent)", color: "#FFFFFF", border: "none", padding: "13px 24px", fontFamily: utility, fontSize: 13.5, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 2 },
+  btnOutline: { background: "transparent", color: "var(--ink)", border: "1.5px solid var(--ink)", padding: "13px 24px", fontFamily: utility, fontSize: 13.5, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", borderRadius: 2 },
+  btnOutlineSmall: { background: "transparent", color: "var(--ink)", border: "1.5px solid var(--ink)", padding: "9px 16px", fontFamily: utility, fontSize: 12.5, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", borderRadius: 2, display: "flex", alignItems: "center", gap: 6 },
 
-  rule: { height: 1, background: "#E2E6EF", margin: "0 0" },
-  ruleThin: { height: 1, background: "#E2E6EF", margin: "28px 0" },
+  rule: { height: 1, background: "var(--border)", margin: "0 0" },
+  ruleThin: { height: 1, background: "var(--border)", margin: "28px 0" },
 
   section: { padding: "56px 0" },
-  sectionEyebrow: { fontFamily: utility, fontSize: 12, letterSpacing: 2, color: "#2C4A82", fontWeight: 600, marginBottom: 10 },
-  h2: { fontFamily: serif, fontSize: 34, fontWeight: 700, color: "#16233F", margin: "0 0 20px" },
-  bodyText: { fontSize: 16.5, lineHeight: 1.85, color: "#3B4458", marginBottom: 16 },
+  sectionEyebrow: { fontFamily: utility, fontSize: 12, letterSpacing: 2, color: "var(--accent)", fontWeight: 600, marginBottom: 10 },
+  h2: { fontFamily: serif, fontSize: 34, fontWeight: 700, color: "var(--ink)", margin: "0 0 20px" },
+  bodyText: { fontSize: 16.5, lineHeight: 1.85, color: "var(--ink-secondary)", marginBottom: 16 },
   twoCol: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 },
 
-  nextEventCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderLeft: "4px solid #2C4A82", padding: 28, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" },
-  nextEventDate: { fontFamily: utility, fontSize: 12, letterSpacing: 1, color: "#2C4A82", fontWeight: 600, marginBottom: 6 },
-  nextEventTitle: { fontFamily: serif, fontWeight: 700, fontSize: 22, color: "#16233F" },
-  nextEventMotion: { fontSize: 14.5, color: "#5B6478", marginTop: 8, display: "flex", alignItems: "center" },
+  nextEventCard: { background: "var(--surface)", border: "1px solid var(--border)", borderLeft: "4px solid var(--accent)", padding: 28, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" },
+  nextEventDate: { fontFamily: utility, fontSize: 12, letterSpacing: 1, color: "var(--accent)", fontWeight: 600, marginBottom: 6 },
+  nextEventTitle: { fontFamily: serif, fontWeight: 700, fontSize: 22, color: "var(--ink)" },
+  nextEventMotion: { fontSize: 14.5, color: "var(--ink-muted)", marginTop: 8, display: "flex", alignItems: "center" },
 
   pillarsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginTop: 8 },
-  pillarCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", padding: 26 },
-  pillarIcon: { width: 40, height: 40, borderRadius: "50%", background: "#16233F", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  pillarTitle: { fontFamily: serif, fontWeight: 700, fontSize: 18, color: "#16233F", marginBottom: 8 },
-  pillarBody: { fontSize: 14.5, lineHeight: 1.7, color: "#5B6478" },
+  pillarCard: { background: "var(--surface)", border: "1px solid var(--border)", padding: 26 },
+  pillarIcon: { width: 40, height: 40, borderRadius: "50%", background: "var(--brand)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  pillarTitle: { fontFamily: serif, fontWeight: 700, fontSize: 18, color: "var(--ink)", marginBottom: 8 },
+  pillarBody: { fontSize: 14.5, lineHeight: 1.7, color: "var(--ink-muted)" },
 
   statsRow: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 },
   statBlock: { textAlign: "center" },
-  statNum: { fontFamily: serif, fontSize: 32, fontWeight: 700, color: "#2C4A82" },
-  statLabel: { fontFamily: utility, fontSize: 11.5, letterSpacing: 0.5, color: "#5B6478", textTransform: "uppercase", marginTop: 4 },
+  statNum: { fontFamily: serif, fontSize: 32, fontWeight: 700, color: "var(--accent)" },
+  statLabel: { fontFamily: utility, fontSize: 11.5, letterSpacing: 0.5, color: "var(--ink-muted)", textTransform: "uppercase", marginTop: 4 },
 
-  orderItem: { display: "flex", gap: 22, background: "#FFFFFF", border: "1px solid #E2E6EF", padding: "26px 28px", marginBottom: 18 },
-  orderNumeral: { fontFamily: serif, fontSize: 28, fontWeight: 700, color: "#5C6B8C", minWidth: 40 },
-  orderMeta: { display: "flex", gap: 18, fontFamily: utility, fontSize: 12, color: "#5B6478", marginBottom: 8, flexWrap: "wrap" },
-  orderTitle: { fontFamily: serif, fontWeight: 700, fontSize: 21, color: "#16233F", marginBottom: 6 },
-  orderMotion: { fontSize: 15, fontStyle: "italic", color: "#2C4A82", marginBottom: 8 },
-  orderDesc: { fontSize: 14.5, lineHeight: 1.7, color: "#5B6478" },
+  orderItem: { display: "flex", gap: 22, background: "var(--surface)", border: "1px solid var(--border)", padding: "26px 28px", marginBottom: 18 },
+  orderNumeral: { fontFamily: serif, fontSize: 28, fontWeight: 700, color: "var(--ink-muted)", minWidth: 40 },
+  orderMeta: { display: "flex", gap: 18, fontFamily: utility, fontSize: 12, color: "var(--ink-muted)", marginBottom: 8, flexWrap: "wrap" },
+  orderTitle: { fontFamily: serif, fontWeight: 700, fontSize: 21, color: "var(--ink)", marginBottom: 6 },
+  orderMotion: { fontSize: 15, fontStyle: "italic", color: "var(--accent)", marginBottom: 8 },
+  orderDesc: { fontSize: 14.5, lineHeight: 1.7, color: "var(--ink-muted)" },
 
   postGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 },
-  postCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", padding: 26, cursor: "pointer" },
-  postMeta: { fontFamily: utility, fontSize: 11.5, letterSpacing: 0.5, color: "#2C4A82", marginBottom: 10, textTransform: "uppercase" },
-  postTitle: { fontFamily: serif, fontWeight: 700, fontSize: 20, color: "#16233F", marginBottom: 10 },
-  postExcerpt: { fontSize: 14.5, lineHeight: 1.7, color: "#5B6478", marginBottom: 14 },
-  readMore: { fontFamily: utility, fontSize: 12.5, fontWeight: 600, color: "#16233F", display: "flex", alignItems: "center", gap: 4 },
-  backLink: { fontFamily: utility, fontSize: 13, color: "#2C4A82", cursor: "pointer", marginBottom: 20, fontWeight: 600 },
+  postCard: { background: "var(--surface)", border: "1px solid var(--border)", padding: 26, cursor: "pointer" },
+  postMeta: { fontFamily: utility, fontSize: 11.5, letterSpacing: 0.5, color: "var(--accent)", marginBottom: 10, textTransform: "uppercase" },
+  postTitle: { fontFamily: serif, fontWeight: 700, fontSize: 20, color: "var(--ink)", marginBottom: 10 },
+  postExcerpt: { fontSize: 14.5, lineHeight: 1.7, color: "var(--ink-muted)", marginBottom: 14 },
+  readMore: { fontFamily: utility, fontSize: 12.5, fontWeight: 600, color: "var(--ink)", display: "flex", alignItems: "center", gap: 4 },
+  backLink: { fontFamily: utility, fontSize: 13, color: "var(--accent)", cursor: "pointer", marginBottom: 20, fontWeight: 600 },
 
   teamGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
   teamCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", padding: 24, textAlign: "center" },
@@ -1093,28 +1150,28 @@ const styles = {
   teamName: { fontFamily: serif, fontSize: 17, fontWeight: 700, color: "#16233F" },
 
   orgChart: { display: "flex", flexDirection: "column", alignItems: "center", marginTop: 28 },
-  orgAvatar: { borderRadius: 6, background: "#16233F", color: "#FFFFFF", fontFamily: serif, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", flexShrink: 0 },
-  orgCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderRadius: 4, padding: "18px 16px", textAlign: "center", width: "100%", maxWidth: 220, boxShadow: "0 2px 6px rgba(22,35,63,0.05)" },
-  orgCardBig: { background: "#FFFFFF", border: "1px solid #E2E6EF", borderRadius: 4, padding: "26px 24px", textAlign: "center", width: "100%", maxWidth: 280, boxShadow: "0 4px 14px rgba(22,35,63,0.08)" },
-  orgCardStatic: { background: "#FFFFFF", border: "1px dashed #E2E6EF", borderRadius: "50%", width: 96, height: 96, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 8 },
-  orgRole: { fontFamily: utility, fontSize: 10.5, letterSpacing: 0.4, color: "#2C4A82", textTransform: "uppercase", fontWeight: 600, marginBottom: 2 },
-  orgRoleBig: { fontFamily: utility, fontSize: 12, letterSpacing: 0.6, color: "#2C4A82", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 },
-  orgName: { fontFamily: serif, fontSize: 14.5, fontWeight: 700, color: "#16233F" },
-  orgNameBig: { fontFamily: serif, fontSize: 19, fontWeight: 700, color: "#16233F" },
+  orgAvatar: { borderRadius: 6, background: "var(--brand)", color: "#FFFFFF", fontFamily: serif, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", flexShrink: 0 },
+  orgCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "18px 16px", textAlign: "center", width: "100%", maxWidth: 220, boxShadow: "0 2px 6px rgba(22,35,63,0.05)" },
+  orgCardBig: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "26px 24px", textAlign: "center", width: "100%", maxWidth: 280, boxShadow: "0 4px 14px rgba(22,35,63,0.08)" },
+  orgCardStatic: { background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "50%", width: 96, height: 96, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 8 },
+  orgRole: { fontFamily: utility, fontSize: 10.5, letterSpacing: 0.4, color: "var(--accent)", textTransform: "uppercase", fontWeight: 600, marginBottom: 2 },
+  orgRoleBig: { fontFamily: utility, fontSize: 12, letterSpacing: 0.6, color: "var(--accent)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 },
+  orgName: { fontFamily: serif, fontSize: 14.5, fontWeight: 700, color: "var(--ink)" },
+  orgNameBig: { fontFamily: serif, fontSize: 19, fontWeight: 700, color: "var(--ink)" },
 
-  orgStem: { width: 1, height: 26, background: "#E2E6EF" },
-  orgStemShort: { width: 1, height: 18, background: "#E2E6EF", margin: "0 auto" },
-  orgStemTiny: { width: 1, height: 12, background: "#E2E6EF", margin: "0 auto" },
-  orgBar: { height: 1, background: "#E2E6EF", width: "min(560px, 70%)" },
-  orgBarSmall: { height: 1, background: "#E2E6EF", width: "80%", margin: "0 auto" },
+  orgStem: { width: 1, height: 26, background: "var(--border)" },
+  orgStemShort: { width: 1, height: 18, background: "var(--border)", margin: "0 auto" },
+  orgStemTiny: { width: 1, height: 12, background: "var(--border)", margin: "0 auto" },
+  orgBar: { height: 1, background: "var(--border)", width: "min(560px, 70%)" },
+  orgBarSmall: { height: 1, background: "var(--border)", width: "80%", margin: "0 auto" },
 
   orgRow2: { display: "flex", gap: 100, justifyContent: "center", flexWrap: "wrap" },
   orgRow3: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 32, width: "100%", maxWidth: 640, margin: "0 auto", alignItems: "start" },
   orgCol: { display: "flex", flexDirection: "column", alignItems: "center" },
   deptCol: { display: "flex", flexDirection: "column", alignItems: "center", width: "100%" },
 
-  deptButton: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#16233F", color: "#FFFFFF", border: "none", borderRadius: 4, padding: "14px 16px", fontFamily: utility, fontSize: 13.5, fontWeight: 600, letterSpacing: 0.5, cursor: "pointer", boxShadow: "0 2px 8px rgba(22,35,63,0.15)", width: "100%" },
-  deptButtonOpen: { background: "#0F1830" },
+  deptButton: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--brand)", color: "#FFFFFF", border: "none", borderRadius: 4, padding: "14px 16px", fontFamily: utility, fontSize: 13.5, fontWeight: 600, letterSpacing: 0.5, cursor: "pointer", boxShadow: "0 2px 8px rgba(22,35,63,0.15)", width: "100%" },
+  deptButtonOpen: { background: "var(--brand-hover)" },
 
   expandWrap: { display: "grid", gridTemplateRows: "0fr", opacity: 0, transition: "grid-template-rows 480ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease", width: "100%" },
   expandWrapOpen: { gridTemplateRows: "1fr", opacity: 1 },
@@ -1126,23 +1183,23 @@ const styles = {
   galleryGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 24 },
   galleryTile: { aspectRatio: "4/3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16 },
   galleryCaption: { fontFamily: utility, fontSize: 12, color: "#FFFFFF", textAlign: "center", opacity: 0.9 },
-  galleryPhotoTile: { position: "relative", aspectRatio: "4/3", overflow: "hidden", border: "1px solid #E2E6EF", borderRadius: 2 },
+  galleryPhotoTile: { position: "relative", aspectRatio: "4/3", overflow: "hidden", border: "1px solid var(--border)", borderRadius: 2 },
   galleryPhotoImg: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   galleryPhotoCaption: { position: "absolute", left: 0, right: 0, bottom: 0, background: "linear-gradient(transparent, rgba(15,24,48,0.82))", color: "#FFFFFF", fontFamily: utility, fontSize: 11.5, padding: "20px 12px 10px", textAlign: "center" },
 
   form: { display: "flex", flexDirection: "column", gap: 6, marginTop: 20 },
-  label: { fontFamily: utility, fontSize: 12, letterSpacing: 0.5, color: "#16233F", fontWeight: 600, marginTop: 12, textTransform: "uppercase" },
-  input: { border: "1px solid #E2E6EF", background: "#FFFFFF", padding: "11px 14px", fontSize: 15, color: "#232B3D", borderRadius: 2 },
-  successNote: { background: "#EEF3E8", border: "1px solid #C3D6AE", color: "#3D5A2A", padding: "10px 14px", fontSize: 14, marginTop: 12, borderRadius: 2 },
-  errorNote: { color: "#2C4A82", fontSize: 13, marginTop: 6 },
-  emptyNote: { fontFamily: utility, fontSize: 14, color: "#8891A3", fontStyle: "italic" },
+  label: { fontFamily: utility, fontSize: 12, letterSpacing: 0.5, color: "var(--ink)", fontWeight: 600, marginTop: 12, textTransform: "uppercase" },
+  input: { border: "1px solid var(--border)", background: "var(--surface)", padding: "11px 14px", fontSize: 15, color: "var(--ink-body)", borderRadius: 2 },
+  successNote: { background: "var(--success-bg)", border: "1px solid var(--success-border)", color: "var(--success-text)", padding: "10px 14px", fontSize: 14, marginTop: 12, borderRadius: 2 },
+  errorNote: { color: "var(--accent)", fontSize: 13, marginTop: 6 },
+  emptyNote: { fontFamily: utility, fontSize: 14, color: "var(--ink-faint)", fontStyle: "italic" },
 
   adminTabs: { display: "flex", gap: 8, marginTop: 28, marginBottom: 8, flexWrap: "wrap" },
-  adminTab: { fontFamily: utility, fontSize: 12.5, fontWeight: 600, letterSpacing: 0.5, padding: "9px 16px", border: "1px solid #E2E6EF", cursor: "pointer", color: "#5B6478" },
-  adminTabActive: { background: "#16233F", color: "#FFFFFF", borderColor: "#16233F" },
+  adminTab: { fontFamily: utility, fontSize: 12.5, fontWeight: 600, letterSpacing: 0.5, padding: "9px 16px", border: "1px solid var(--border)", cursor: "pointer", color: "var(--ink-muted)" },
+  adminTabActive: { background: "var(--brand)", color: "#FFFFFF", borderColor: "var(--brand)" },
   adminGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginTop: 24, alignItems: "start" },
-  adminListItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FFFFFF", border: "1px solid #E2E6EF", padding: "14px 18px", marginBottom: 10 },
-  adminImageItem: { display: "flex", alignItems: "center", gap: 14, background: "#FFFFFF", border: "1px solid #E2E6EF", padding: "10px 14px", marginBottom: 10 },
+  adminListItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", padding: "14px 18px", marginBottom: 10 },
+  adminImageItem: { display: "flex", alignItems: "center", gap: 14, background: "var(--surface)", border: "1px solid var(--border)", padding: "10px 14px", marginBottom: 10 },
   adminImageThumb: { width: 56, height: 56, objectFit: "cover", borderRadius: 2, flexShrink: 0 },
 
   footer: { background: "#16233F", marginTop: 60 },
