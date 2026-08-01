@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Menu, X, Calendar, BookOpen, Users, Image as ImageIcon, Mail,
   Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, MapPin, Clock,
-  Instagram, MessageCircle, Sun, Moon,
+  Instagram, MessageCircle, Sun, Moon, Pencil, Download,
 } from "lucide-react";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -131,6 +131,28 @@ export default function BuildsSite() {
     return unsubscribe;
   }, []);
 
+  /* ---------- auto-logout after inactivity — protects the admin panel on shared/unlocked devices ---------- */
+  useEffect(() => {
+    if (!isAdmin) return;
+    const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes — adjust here if needed
+    let idleTimer;
+    const handleIdleLogout = () => {
+      signOut(auth);
+      setTab("home");
+    };
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(handleIdleLogout, IDLE_TIMEOUT_MS);
+    };
+    const activityEvents = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetIdleTimer));
+    resetIdleTimer();
+    return () => {
+      clearTimeout(idleTimer);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetIdleTimer));
+    };
+  }, [isAdmin]);
+
   /* ---------- favicon (best effort — may not apply outside a full browser tab) ---------- */
   useEffect(() => {
     try {
@@ -209,8 +231,10 @@ export default function BuildsSite() {
   };
 
   const addEvent = (ev) => persistEvents([...events, { ...ev, id: "e" + Date.now() }]);
+  const updateEvent = (id, patch) => persistEvents(events.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   const removeEvent = (id) => persistEvents(events.filter((e) => e.id !== id));
   const addPost = (p) => persistPosts([{ ...p, id: "p" + Date.now() }, ...posts]);
+  const updatePost = (id, patch) => persistPosts(posts.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   const removePost = (id) => persistPosts(posts.filter((p) => p.id !== id));
 
   const addImage = async (img) => {
@@ -384,8 +408,8 @@ export default function BuildsSite() {
         )}
         {tab === "admin" && isAdmin && (
           <AdminPanel
-            events={events} addEvent={addEvent} removeEvent={removeEvent}
-            posts={posts} addPost={addPost} removePost={removePost}
+            events={events} addEvent={addEvent} updateEvent={updateEvent} removeEvent={removeEvent}
+            posts={posts} addPost={addPost} updatePost={updatePost} removePost={removePost}
             submissions={submissions} removeSubmission={removeSubmission}
             images={images} addImage={addImage} removeImage={removeImage}
             logout={() => { signOut(auth); setTab("home"); }}
@@ -877,25 +901,60 @@ function AdminLogin({ emailInput, setEmailInput, pwInput, setPwInput, handleLogi
   );
 }
 
-function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost, submissions, removeSubmission, images, addImage, removeImage, logout }) {
+function AdminPanel({ events, addEvent, updateEvent, removeEvent, posts, addPost, updatePost, removePost, submissions, removeSubmission, images, addImage, removeImage, logout }) {
   const [panel, setPanel] = useState("events");
-  const [ev, setEv] = useState({ title: "", date: "", time: "", venue: "", motion: "", description: "" });
-  const [post, setPost] = useState({ title: "", author: "", excerpt: "", content: "" });
+  const emptyEvent = { title: "", date: "", time: "", venue: "", motion: "", description: "" };
+  const emptyPost = { title: "", author: "", excerpt: "", content: "" };
+  const [ev, setEv] = useState(emptyEvent);
+  const [post, setPost] = useState(emptyPost);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [editingPostId, setEditingPostId] = useState(null);
   const [imgCaption, setImgCaption] = useState("");
   const [imgPreview, setImgPreview] = useState(null);
   const [imgError, setImgError] = useState("");
 
+  const exportSubmissionsCSV = () => {
+    const cols = ["name", "enrollment", "department", "semester", "email", "whatsapp", "reason", "date"];
+    const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      cols.join(","),
+      ...submissions.map((s) => cols.map((c) => escape(s[c])).join(",")),
+    ];
+    const blob = new Blob(["\uFEFF" + rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `builds-applications-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const startEditEvent = (item) => {
+    setEditingEventId(item.id);
+    setEv({ title: item.title, date: item.date, time: item.time, venue: item.venue, motion: item.motion, description: item.description });
+  };
+  const cancelEditEvent = () => { setEditingEventId(null); setEv(emptyEvent); };
   const submitEvent = (e) => {
     e.preventDefault();
     if (!ev.title || !ev.date) return;
-    addEvent(ev);
-    setEv({ title: "", date: "", time: "", venue: "", motion: "", description: "" });
+    if (editingEventId) { updateEvent(editingEventId, ev); setEditingEventId(null); }
+    else addEvent(ev);
+    setEv(emptyEvent);
   };
+
+  const startEditPost = (item) => {
+    setEditingPostId(item.id);
+    setPost({ title: item.title, author: item.author, excerpt: item.excerpt, content: item.content });
+  };
+  const cancelEditPost = () => { setEditingPostId(null); setPost(emptyPost); };
   const submitPost = (e) => {
     e.preventDefault();
     if (!post.title || !post.content) return;
-    addPost({ ...post, date: new Date().toISOString().slice(0, 10) });
-    setPost({ title: "", author: "", excerpt: "", content: "" });
+    if (editingPostId) { updatePost(editingPostId, post); setEditingPostId(null); }
+    else addPost({ ...post, date: new Date().toISOString().slice(0, 10) });
+    setPost(emptyPost);
   };
 
   const handleImageSelect = (e) => {
@@ -971,7 +1030,14 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
             <input style={styles.input} value={ev.motion} onChange={(e) => setEv({ ...ev, motion: e.target.value })} />
             <label style={styles.label}>Description</label>
             <textarea style={{ ...styles.input, minHeight: 80 }} value={ev.description} onChange={(e) => setEv({ ...ev, description: e.target.value })} />
-            <button className="btn-maroon" style={{ ...styles.btnPrimary, alignSelf: "flex-start" }}><Plus size={16} /> Add to Order Paper</button>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <button className="btn-maroon" style={{ ...styles.btnPrimary, alignSelf: "flex-start" }}>
+                {editingEventId ? <><Pencil size={16} /> Save Changes</> : <><Plus size={16} /> Add to Order Paper</>}
+              </button>
+              {editingEventId && (
+                <span style={styles.cancelEditLink} onClick={cancelEditEvent}>Cancel</span>
+              )}
+            </div>
           </form>
           <div>
             {events.map((e) => (
@@ -980,7 +1046,10 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
                   <div style={{ fontWeight: 600 }}>{e.title}</div>
                   <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{fmtDate(e.date)} · {e.venue}</div>
                 </div>
-                <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removeEvent(e.id)} />
+                <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
+                  <Pencil size={16} style={{ cursor: "pointer", color: "var(--ink-muted)" }} onClick={() => startEditEvent(e)} />
+                  <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removeEvent(e.id)} />
+                </div>
               </div>
             ))}
           </div>
@@ -998,7 +1067,14 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
             <input style={styles.input} value={post.excerpt} onChange={(e) => setPost({ ...post, excerpt: e.target.value })} />
             <label style={styles.label}>Full content</label>
             <textarea style={{ ...styles.input, minHeight: 120 }} value={post.content} onChange={(e) => setPost({ ...post, content: e.target.value })} />
-            <button className="btn-maroon" style={{ ...styles.btnPrimary, alignSelf: "flex-start" }}><Plus size={16} /> Publish Dispatch</button>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <button className="btn-maroon" style={{ ...styles.btnPrimary, alignSelf: "flex-start" }}>
+                {editingPostId ? <><Pencil size={16} /> Save Changes</> : <><Plus size={16} /> Publish Dispatch</>}
+              </button>
+              {editingPostId && (
+                <span style={styles.cancelEditLink} onClick={cancelEditPost}>Cancel</span>
+              )}
+            </div>
           </form>
           <div>
             {posts.map((p) => (
@@ -1007,7 +1083,10 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
                   <div style={{ fontWeight: 600 }}>{p.title}</div>
                   <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{fmtDate(p.date)} · {p.author}</div>
                 </div>
-                <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removePost(p.id)} />
+                <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
+                  <Pencil size={16} style={{ cursor: "pointer", color: "var(--ink-muted)" }} onClick={() => startEditPost(p)} />
+                  <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removePost(p.id)} />
+                </div>
               </div>
             ))}
           </div>
@@ -1049,6 +1128,11 @@ function AdminPanel({ events, addEvent, removeEvent, posts, addPost, removePost,
 
       {panel === "submissions" && (
         <div style={{ marginTop: 24 }}>
+          {submissions.length > 0 && (
+            <button className="btn-maroon" style={{ ...styles.btnPrimary, marginBottom: 18 }} onClick={exportSubmissionsCSV}>
+              <Download size={16} /> Export as CSV (opens in Excel)
+            </button>
+          )}
           {submissions.length === 0 && <div style={styles.emptyNote}>No applications yet.</div>}
           {submissions.map((s) => (
             <div key={s.id} style={{ ...styles.adminListItem, alignItems: "flex-start" }}>
@@ -1199,6 +1283,7 @@ const styles = {
   adminTabActive: { background: "var(--brand)", color: "#FFFFFF", borderColor: "var(--brand)" },
   adminGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginTop: 24, alignItems: "start" },
   adminListItem: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", padding: "14px 18px", marginBottom: 10 },
+  cancelEditLink: { fontFamily: utility, fontSize: 12.5, fontWeight: 600, color: "var(--ink-muted)", cursor: "pointer" },
   adminImageItem: { display: "flex", alignItems: "center", gap: 14, background: "var(--surface)", border: "1px solid var(--border)", padding: "10px 14px", marginBottom: 10 },
   adminImageThumb: { width: 56, height: 56, objectFit: "cover", borderRadius: 2, flexShrink: 0 },
 
