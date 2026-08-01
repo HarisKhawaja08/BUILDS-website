@@ -122,7 +122,7 @@ export default function BuildsSite() {
 
   const [openPost, setOpenPost] = useState(null);
 
-  const [joinForm, setJoinForm] = useState({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
+  const [joinForm, setJoinForm] = useState({ name: "", enrollment: "", department: "", semester: "", interests: [], reason: "", email: "", whatsapp: "" });
   const [joinSent, setJoinSent] = useState(false);
   const [joinError, setJoinError] = useState("");
 
@@ -268,14 +268,14 @@ export default function BuildsSite() {
 
   const submitJoin = async (e) => {
     e.preventDefault();
-    if (!joinForm.name || !joinForm.enrollment || !joinForm.department || !joinForm.email || !joinForm.whatsapp) return;
+    if (!joinForm.name || !joinForm.enrollment || !joinForm.department || !joinForm.email || !joinForm.whatsapp || joinForm.interests.length === 0) return;
     const id = "s" + Date.now();
     const entry = { ...joinForm, date: new Date().toISOString() };
     setJoinError("");
     try {
       await window.storage.set(`builds:submissions:app:${id}`, JSON.stringify(entry), true);
       setSubmissions((prev) => [{ id, ...entry }, ...prev]);
-      setJoinForm({ name: "", enrollment: "", department: "", semester: "", reason: "", email: "", whatsapp: "" });
+      setJoinForm({ name: "", enrollment: "", department: "", semester: "", interests: [], reason: "", email: "", whatsapp: "" });
       setJoinSent(true);
       setTimeout(() => setJoinSent(false), 4000);
     } catch (err) {
@@ -875,6 +875,28 @@ function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError }) {
         <input type="tel" style={styles.input} value={joinForm.whatsapp} placeholder="e.g. 03001234567"
           onChange={(e) => setJoinForm({ ...joinForm, whatsapp: e.target.value })} required />
 
+        <label style={styles.label}>Which wing would you like to join?</label>
+        <div style={styles.checkRow}>
+          {["Debates", "Literature"].map((wing) => (
+            <label key={wing} style={styles.checkOption}>
+              <input
+                type="checkbox"
+                checked={joinForm.interests.includes(wing)}
+                onChange={(e) => {
+                  const next = e.target.checked
+                    ? [...joinForm.interests, wing]
+                    : joinForm.interests.filter((w) => w !== wing);
+                  setJoinForm({ ...joinForm, interests: next });
+                }}
+              />
+              {wing}
+            </label>
+          ))}
+        </div>
+        <p style={{ fontSize: 12.5, color: "var(--ink-faint)", marginTop: -2 }}>
+          Select both if you'd like to be part of both wings.
+        </p>
+
         <label style={styles.label}>Why do you want to join?</label>
         <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical" }} value={joinForm.reason}
           onChange={(e) => setJoinForm({ ...joinForm, reason: e.target.value })} />
@@ -936,11 +958,12 @@ function AdminPanel({ events, addEvent, updateEvent, removeEvent, posts, addPost
   const [imgError, setImgError] = useState("");
 
   const exportSubmissionsCSV = () => {
-    const cols = ["name", "enrollment", "department", "semester", "email", "whatsapp", "reason", "date"];
+    const cols = ["name", "enrollment", "department", "semester", "interests", "email", "whatsapp", "reason", "date"];
     const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const cellValue = (s, c) => (c === "interests" ? (s.interests || []).join(" & ") : s[c]);
     const rows = [
       cols.join(","),
-      ...submissions.map((s) => cols.map((c) => escape(s[c])).join(",")),
+      ...submissions.map((s) => cols.map((c) => escape(cellValue(s, c))).join(",")),
     ];
     const blob = new Blob(["\uFEFF" + rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -1162,6 +1185,9 @@ function AdminPanel({ events, addEvent, updateEvent, removeEvent, posts, addPost
                 <div style={{ fontWeight: 600 }}>{s.name} — {s.department || "—"}{s.semester ? `, ${s.semester} semester` : ""}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-muted)", marginTop: 2 }}>Enrollment: {s.enrollment || "—"}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{s.email} · WhatsApp: {s.whatsapp || "—"}</div>
+                <div style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, marginTop: 2 }}>
+                  Wing: {(s.interests && s.interests.length) ? s.interests.join(" & ") : "—"}
+                </div>
                 {s.reason && <div style={{ fontSize: 13, marginTop: 6, color: "var(--ink-body)" }}>{s.reason}</div>}
               </div>
               <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)", flexShrink: 0, marginTop: 2 }} onClick={() => removeSubmission(s.id)} />
@@ -1295,6 +1321,8 @@ const styles = {
 
   form: { display: "flex", flexDirection: "column", gap: 6, marginTop: 20 },
   label: { fontFamily: utility, fontSize: 12, letterSpacing: 0.5, color: "var(--ink)", fontWeight: 600, marginTop: 12, textTransform: "uppercase" },
+  checkRow: { display: "flex", gap: 20, marginTop: 4 },
+  checkOption: { display: "flex", alignItems: "center", gap: 8, fontSize: 15, color: "var(--ink-body)", fontFamily: body, cursor: "pointer" },
   input: { border: "1px solid var(--border)", background: "var(--surface)", padding: "11px 14px", fontSize: 15, color: "var(--ink-body)", borderRadius: 2 },
   successNote: { background: "var(--success-bg)", border: "1px solid var(--success-border)", color: "var(--success-text)", padding: "10px 14px", fontSize: 14, marginTop: 12, borderRadius: 2 },
   errorNote: { color: "var(--accent)", fontSize: 13, marginTop: 6 },
