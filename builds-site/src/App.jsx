@@ -526,9 +526,9 @@ function Home({ setTab, events }) {
         <div style={styles.sectionEyebrow}>THREE WINGS, ONE FLOOR</div>
         <div className="pillars-grid" style={styles.pillarsGrid}>
           {[
-            { icon: <Users size={20} />, title: "Debate Wing", body: "British Parliamentary and Asian formats. Weekly practice rounds, adjudicator training, tournament delegations." },
-            { icon: <BookOpen size={20} />, title: "Literary Wing", body: "Poetry, prose, and critique circles. A quarterly anthology drawn from member submissions." },
-            { icon: <Calendar size={20} />, title: "Events & Outreach", body: "Inter-university tournaments, open mics, and workshops run for the wider student body." },
+            { icon: <Users size={20} />, title: "Directorate of Debate ", body: "British Parliamentary and Asian formats. Weekly practice rounds, adjudicator training, tournament delegations." },
+            { icon: <BookOpen size={20} />, title: "Directorate of Literature", body: "Poetry, prose, and critique circles. A quarterly anthology drawn from member submissions." },
+            { icon: <Calendar size={20} />, title: "Operations Department", body: "Events management,social media and graphics, IT, logistics, marketing & security." },
           ].map((p) => (
             <div key={p.title} style={styles.pillarCard}>
               <div style={styles.pillarIcon}>{p.icon}</div>
