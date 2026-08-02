@@ -529,6 +529,7 @@ function Home({ setTab, events }) {
             { icon: <Users size={20} />, title: "Directorate of Debate ", body: "British Parliamentary and Asian formats. Weekly practice rounds, adjudicator training, tournament delegations." },
             { icon: <BookOpen size={20} />, title: "Directorate of Literature", body: "Poetry, prose, and critique circles. A quarterly anthology drawn from member submissions." },
             { icon: <Calendar size={20} />, title: "Operations Department", body: "Events management,social media and graphics, IT, logistics, marketing & security." },
+            { icon: <Calendar size={20} />, title: "Board of directors", body: "Making the core decissions , from selection of new hierarchy to maintaining law and order." },
           ].map((p) => (
             <div key={p.title} style={styles.pillarCard}>
               <div style={styles.pillarIcon}>{p.icon}</div>
