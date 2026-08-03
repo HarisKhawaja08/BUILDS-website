@@ -1,0 +1,14 @@
+# Netlify configuration for BUILDS-website.
+# The Vite/React app lives in builds-site/, so Netlify must set the
+# base directory there: it looks for package.json and runs the build
+# command inside that folder. `publish` is relative to `base`.
+[build]
+  base = "builds-site"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA catch-all — every route serves index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
