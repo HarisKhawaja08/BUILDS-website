@@ -484,7 +484,7 @@ function Home({ setTab, events }) {
   return (
     <div>
       <section className="hero-section" style={styles.hero}>
-        <div style={styles.heroEyebrow}>ESTABLISHED · BAHRIA UNIVERSITY ISLAMABAD</div>
+        <div style={styles.heroEyebrow}>ESTABLISHED · BAHRIA SCHOOL OF ENGINEERING AND APPLIED SCIENCES</div>
         <h1 style={styles.heroTitle}>
           The House<br />believes in<br /><em style={{ color: "var(--accent)", fontStyle: "italic" }}>the argument, well made.</em>
         </h1>
@@ -546,7 +546,7 @@ function Home({ setTab, events }) {
 function About() {
   return (
     <section style={styles.section}>
-      <div style={styles.sectionEyebrow}>ABOUT THE SOCIETY</div>
+      <div style={styles.sectionEyebrow}>BUILDS BSEAS, H-11</div>
       <h2 style={styles.h2}>Constitution &amp; Purpose</h2>
       <div className="two-col" style={styles.twoCol}>
         <p style={styles.bodyText}>
@@ -563,7 +563,7 @@ function About() {
       </div>
       <div style={styles.ruleThin} />
       <div className="stats-row" style={styles.statsRow}>
-        {[["120+", "Active members"], ["30+", "Tournaments attended"], ["8", "Anthologies published"], ["2015", "Founded"]].map(([n, l]) => (
+        {[["120+", "Active members"], ["10+", "Tournaments attended"], ["8", "Anthologies published"], ["2023", "Founded"]].map(([n, l]) => (
           <div key={l} style={styles.statBlock}>
             <div style={styles.statNum}>{n}</div>
             <div style={styles.statLabel}>{l}</div>
@@ -578,7 +578,7 @@ function OrderPaper({ events }) {
   const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
   return (
     <section style={styles.section}>
-      <div style={styles.sectionEyebrow}>UPCOMING BUSINESS</div>
+      <div style={styles.sectionEyebrow}>UPCOMING EVENTS</div>
       <h2 style={styles.h2}>The Order Paper</h2>
       <p style={{ ...styles.bodyText, maxWidth: 640 }}>
         Every session BUILDS convenes is listed here, in the order the House will hear it.
