@@ -5,6 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BUILDS — Bahria University Islamabad Literary &amp; Debates Society</title>
     <meta name="description" content="BUILDS — Bahria University Islamabad Literary and Debates Society. Debate wing, literary wing, events, and membership." />
+    <meta name="theme-color" content="#16233F" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="BUILDS" />
+    <style>
+      :root {
+        --bg: #FFFFFF;
+        --surface: #FFFFFF;
+        --ink: #16233F;
+        --ink-body: #232B3D;
+        --ink-secondary: #3B4458;
+        --ink-muted: #5B6478;
+        --ink-faint: #8891A3;
+        --border: #E2E6EF;
+        --accent: #2C4A82;
+        --brand: #16233F;
+        --brand-hover: #0F1830;
+        --success-bg: #EEF3E8;
+        --success-border: #C3D6AE;
+        --success-text: #3D5A2A;
+      }
+      [data-theme="light"] {
+        --bg: #FFFFFF;
+        --surface: #FFFFFF;
+        --ink: #16233F;
+        --ink-body: #232B3D;
+        --ink-secondary: #3B4458;
+        --ink-muted: #5B6478;
+        --ink-faint: #8891A3;
+        --border: #E2E6EF;
+        --accent: #2C4A82;
+        --brand: #16233F;
+        --brand-hover: #0F1830;
+        --success-bg: #EEF3E8;
+        --success-border: #C3D6AE;
+        --success-text: #3D5A2A;
+        background: var(--bg);
+      }
+      [data-theme="dark"] {
+        --bg: #0B1220;
+        --surface: #131B2E;
+        --ink: #F1F3F9;
+        --ink-body: #E6E9F2;
+        --ink-secondary: #C7CCDC;
+        --ink-muted: #98A1BA;
+        --ink-faint: #6C7591;
+        --border: #263252;
+        --accent: #7FA8F0;
+        --brand: #35507F;
+        --brand-hover: #4A6BA0;
+        --success-bg: #16231A;
+        --success-border: #3A5240;
+        --success-text: #A9D8A0;
+        background: var(--bg);
+      }
+      html { background: var(--bg); }
+    </style>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("builds:theme");
+          if (t !== "light" && t !== "dark" && t !== "system") t = "system";
+          if (t === "system") {
+            var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            t = dark ? "dark" : "light";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

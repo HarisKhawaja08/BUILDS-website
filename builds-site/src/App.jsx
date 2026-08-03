@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Menu, X, Calendar, BookOpen, Users, Image as ImageIcon, Mail,
-  Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, MapPin, Clock,
-  Instagram, MessageCircle, Sun, Moon, Pencil, Download, Scale,
+  Menu, X, Calendar, CalendarPlus, BookOpen, Users, Image as ImageIcon, Mail,
+  Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, ChevronLeft, MapPin, Clock,
+  Instagram, MessageCircle, Sun, Moon, Monitor, Check, Search, Pencil, Download, Scale,
 } from "lucide-react";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -79,6 +79,59 @@ function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
+
+function eventStartDate(ev) {
+  const [y, mo, d] = (ev.date || "2026-01-01").split("-").map(Number);
+  let h = 0, m = 0;
+  const t = (ev.time || "").trim();
+  const m2 = t.match(/^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?$/);
+  if (m2) {
+    h = parseInt(m2[1], 10);
+    m = m2[2] ? parseInt(m2[2], 10) : 0;
+    if (m2[3] && m2[3].toLowerCase() === "pm" && h < 12) h += 12;
+    if (m2[3] && m2[3].toLowerCase() === "am" && h === 12) h = 0;
+  }
+  return new Date(Date.UTC(y, mo - 1, d, h, m));
+}
+
+function icsTimestamp(d) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+}
+
+function downloadICS(ev) {
+  const start = eventStartDate(ev);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const esc = (s) => (s || "").replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\r?\n/g, "\\n");
+  const description = ev.motion
+    ? `Motion: ${ev.motion}${ev.description ? " — " + ev.description : ""}`
+    : (ev.description || "");
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//BUILDS//Order Paper//EN",
+    "BEGIN:VEVENT",
+    `UID:builds-${ev.id}@builds-website`,
+    `DTSTAMP:${icsTimestamp(new Date())}`,
+    `DTSTART:${icsTimestamp(start)}`,
+    `DTEND:${icsTimestamp(end)}`,
+    `SUMMARY:${esc(ev.title)}`,
+    `DESCRIPTION:${esc(description)}`,
+    `LOCATION:${esc(ev.venue)}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `builds-${(ev.title || "event").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 // Urdu/Arabic-script Unicode ranges — used to auto-detect Urdu dispatches
@@ -93,21 +146,55 @@ function urduStyle(text) {
     : {};
 }
 
+const BASE_TITLE = "BUILDS — Bahria University Islamabad Literary & Debates Society";
+const TAB_TITLES = {
+  home: "Home",
+  about: "About",
+  events: "Order Paper",
+  blog: "Dispatches",
+  team: "The House",
+  gallery: "Gallery",
+  join: "Join",
+  login: "Secretariat Login",
+  admin: "Secretariat",
+};
+
 export default function BuildsSite() {
   const [tab, setTab] = useState("home");
   const [navOpen, setNavOpen] = useState(false);
   const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem("builds:theme");
-      if (saved === "light" || saved === "dark") return saved;
-      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+      if (saved === "light" || saved === "dark" || saved === "system") return saved;
     } catch (e) { /* ignore — localStorage/matchMedia unavailable */ }
-    return "light";
+    return "system";
   });
+  const [systemDark, setSystemDark] = useState(() =>
+    !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e) => setSystemDark(e.matches);
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
+  const effectiveTheme = theme === "system" ? (systemDark ? "dark" : "light") : theme;
   useEffect(() => {
     try { localStorage.setItem("builds:theme", theme); } catch (e) { /* ignore */ }
   }, [theme]);
-  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef(null);
+  useEffect(() => {
+    const onClick = (e) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target)) setThemeMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
 
   const [events, setEvents] = useState(SEED_EVENTS);
   const [posts, setPosts] = useState(SEED_POSTS);
@@ -294,10 +381,15 @@ export default function BuildsSite() {
     { id: "join", label: "Join" },
   ];
 
+  useEffect(() => {
+    const title = TAB_TITLES[tab];
+    document.title = title ? `${title} — BUILDS` : BASE_TITLE;
+  }, [tab]);
+
   return (
-    <div style={styles.page} data-theme={theme}>
+    <div style={styles.page} data-theme={effectiveTheme}>
       <style>{`
-        :root, [data-theme="light"] {
+        [data-theme="light"] {
           --bg: #FFFFFF;
           --surface: #FFFFFF;
           --ink: #16233F;
@@ -390,15 +482,40 @@ export default function BuildsSite() {
             </span>
           </nav>
 
-          <button
-            className="theme-toggle-btn"
-            style={styles.themeToggle}
-            onClick={toggleTheme}
-            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-            title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-          >
-            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
+          <div style={styles.themeMenuWrap} ref={themeMenuRef}>
+            <button
+              className="theme-toggle-btn"
+              style={styles.themeToggle}
+              onClick={() => setThemeMenuOpen((v) => !v)}
+              aria-label="Choose theme"
+              aria-expanded={themeMenuOpen}
+              title="Choose theme"
+            >
+              {effectiveTheme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+            {themeMenuOpen && (
+              <div style={styles.themeMenu}>
+                {[
+                  { value: "light", label: "Light", icon: <Sun size={16} /> },
+                  { value: "dark", label: "Dark", icon: <Moon size={16} /> },
+                  { value: "system", label: "System", icon: <Monitor size={16} /> },
+                ].map((opt) => (
+                  <div
+                    key={opt.value}
+                    style={{
+                      ...styles.themeMenuOption,
+                      ...(theme === opt.value ? styles.themeMenuOptionActive : {}),
+                    }}
+                    onClick={() => { setTheme(opt.value); setThemeMenuOpen(false); }}
+                  >
+                    {opt.icon}
+                    <span style={{ flex: 1 }}>{opt.label}</span>
+                    {theme === opt.value && <Check size={14} />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button className="hamburger-btn" style={styles.hamburger} onClick={() => setNavOpen((v) => !v)} aria-label="Menu">
             {navOpen ? <X size={22} /> : <Menu size={22} />}
@@ -597,6 +714,9 @@ function OrderPaper({ events }) {
               <div style={styles.orderTitle}>{ev.title}</div>
               <div style={styles.orderMotion}>“{ev.motion}”</div>
               <div style={styles.orderDesc}>{ev.description}</div>
+              <button className="btn-outline" style={styles.orderCalBtn} onClick={() => downloadICS(ev)}>
+                <CalendarPlus size={14} /> Add to calendar
+              </button>
             </div>
           </div>
         ))}
@@ -606,6 +726,7 @@ function OrderPaper({ events }) {
 }
 
 function Blog({ posts, openPost, setOpenPost }) {
+  const [q, setQ] = useState("");
   const active = posts.find((p) => p.id === openPost);
   if (active) {
     return (
@@ -617,12 +738,27 @@ function Blog({ posts, openPost, setOpenPost }) {
       </section>
     );
   }
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? posts.filter((p) => [p.title, p.excerpt, p.content, p.author].join(" ").toLowerCase().includes(term))
+    : posts;
   return (
     <section style={styles.section}>
       <div style={styles.sectionEyebrow}>FROM THE SOCIETY</div>
       <h2 style={styles.h2}>Dispatches</h2>
+      <div style={styles.searchRow}>
+        <Search size={16} style={styles.searchIcon} />
+        <input
+          type="search"
+          placeholder="Search dispatches…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          style={styles.searchInput}
+          aria-label="Search dispatches"
+        />
+      </div>
       <div className="post-grid" style={styles.postGrid}>
-        {posts.map((p) => (
+        {filtered.map((p) => (
           <div key={p.id} className="ev-card" style={styles.postCard} onClick={() => setOpenPost(p.id)}>
             <div style={styles.postMeta}>{fmtDate(p.date)} · {p.author}</div>
             <div style={{ ...styles.postTitle, ...urduStyle(p.title) }}>{p.title}</div>
@@ -630,7 +766,9 @@ function Blog({ posts, openPost, setOpenPost }) {
             <div style={styles.readMore}>Read dispatch <ChevronRight size={14} /></div>
           </div>
         ))}
-        {posts.length === 0 && <div style={styles.emptyNote}>No dispatches published yet.</div>}
+        {filtered.length === 0 && (
+          <div style={styles.emptyNote}>No dispatches match “{q.trim()}”.</div>
+        )}
       </div>
     </section>
   );
@@ -809,30 +947,81 @@ function Gallery({ images = [] }) {
   ];
   const palette = ["#16233F", "#2C4A82", "#5C6B8C", "#3B4A6B", "#0F1830", "#1B2A4A"];
   const hasReal = images.length > 0;
+  const tiles = hasReal
+    ? images.map((img) => ({ id: img.id, label: img.caption, dataUrl: img.dataUrl, color: null, real: true }))
+    : shots.map((s, i) => ({ id: "plate-" + i, label: s.label, dataUrl: null, color: palette[i % palette.length], real: false }));
+  const [lightbox, setLightbox] = useState(null);
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setLightbox(null);
+      if (e.key === "ArrowRight") setLightbox((i) => (i + 1) % tiles.length);
+      if (e.key === "ArrowLeft") setLightbox((i) => (i + tiles.length - 1) % tiles.length);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightbox, tiles.length]);
+  const current = lightbox !== null ? tiles[lightbox] : null;
   return (
     <section style={styles.section}>
       <div style={styles.sectionEyebrow}>FROM THE ARCHIVE</div>
       <h2 style={styles.h2}>Gallery</h2>
       <p style={{ ...styles.bodyText, maxWidth: 640, marginBottom: 8 }}>
         {hasReal
-          ? "Moments from the House, added by the secretariat."
+          ? "Moments from the House, added by the secretariat. Click any plate to view it."
           : "Placeholder plates below — the secretariat can upload real event photography from the Admin panel."}
       </p>
       <div className="gallery-grid" style={styles.galleryGrid}>
-        {hasReal
-          ? images.map((img) => (
-              <div key={img.id} style={styles.galleryPhotoTile}>
-                <img src={img.dataUrl} alt={img.caption || "BUILDS event photo"} style={styles.galleryPhotoImg} />
-                {img.caption && <div style={styles.galleryPhotoCaption}>{img.caption}</div>}
-              </div>
-            ))
-          : shots.map((s, i) => (
-              <div key={s.label} style={{ ...styles.galleryTile, background: palette[i % palette.length] }}>
-                <ImageIcon size={22} color="#FFFFFF" style={{ opacity: 0.7 }} />
-                <div style={styles.galleryCaption}>{s.label}</div>
-              </div>
-            ))}
+        {tiles.map((t, i) =>
+          t.real ? (
+            <div key={t.id} style={{ ...styles.galleryPhotoTile, cursor: "pointer" }} onClick={() => setLightbox(i)}>
+              <img src={t.dataUrl} alt={t.label || "BUILDS event photo"} style={styles.galleryPhotoImg} />
+              {t.label && <div style={styles.galleryPhotoCaption}>{t.label}</div>}
+            </div>
+          ) : (
+            <div key={t.id} style={{ ...styles.galleryTile, background: t.color, cursor: "pointer" }} onClick={() => setLightbox(i)}>
+              <ImageIcon size={22} color="#FFFFFF" style={{ opacity: 0.7 }} />
+              <div style={styles.galleryCaption}>{t.label}</div>
+            </div>
+          )
+        )}
       </div>
+      {current && (
+        <div style={styles.lightbox} onClick={() => setLightbox(null)}>
+          <button style={styles.lightboxClose} onClick={() => setLightbox(null)} aria-label="Close (Esc)">
+            <X size={22} />
+          </button>
+          <button
+            style={{ ...styles.lightboxNav, left: 16 }}
+            onClick={(e) => { e.stopPropagation(); setLightbox((lightbox + tiles.length - 1) % tiles.length); }}
+            aria-label="Previous photo"
+          >
+            <ChevronLeft size={26} />
+          </button>
+          <div style={styles.lightboxStage} onClick={(e) => e.stopPropagation()}>
+            {current.real ? (
+              <img src={current.dataUrl} alt={current.label || "BUILDS event photo"} style={styles.lightboxImg} />
+            ) : (
+              <div style={{ ...styles.lightboxPlate, background: current.color }}>
+                <ImageIcon size={56} color="#FFFFFF" style={{ opacity: 0.85 }} />
+              </div>
+            )}
+            {current.label && <div style={styles.lightboxCaption}>{current.label}</div>}
+          </div>
+          <button
+            style={{ ...styles.lightboxNav, right: 16 }}
+            onClick={(e) => { e.stopPropagation(); setLightbox((lightbox + 1) % tiles.length); }}
+            aria-label="Next photo"
+          >
+            <ChevronRight size={26} />
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -1221,7 +1410,11 @@ const styles = {
   navDesktop: { display: "flex", gap: 28, alignItems: "center" },
   navLink: { fontFamily: utility, fontSize: 12.5, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", color: "var(--ink)", fontWeight: 500 },
   hamburger: { display: "none", background: "none", border: "none", color: "var(--ink)", cursor: "pointer" },
-  themeToggle: { display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: "50%", background: "transparent", border: "1px solid var(--border)", color: "var(--ink)", cursor: "pointer", marginLeft: 12, flexShrink: 0 },
+  themeToggle: { display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: "50%", background: "transparent", border: "1px solid var(--border)", color: "var(--ink)", cursor: "pointer", flexShrink: 0 },
+  themeMenuWrap: { position: "relative", marginLeft: 12, flexShrink: 0 },
+  themeMenu: { position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 12px 32px rgba(0,0,0,0.2)", minWidth: 168, padding: 6, zIndex: 50 },
+  themeMenuOption: { display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 6, cursor: "pointer", color: "var(--ink)", fontFamily: utility, fontSize: 13.5, fontWeight: 500 },
+  themeMenuOptionActive: { background: "var(--border)" },
   navMobile: { display: "flex", flexDirection: "column", background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "8px 24px 16px" },
   navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "var(--ink)", padding: "14px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" },
   headerRule: { height: 1, background: "var(--border)", maxWidth: 1080, margin: "0 auto" },
@@ -1267,8 +1460,12 @@ const styles = {
   orderTitle: { fontFamily: serif, fontWeight: 700, fontSize: 21, color: "var(--ink)", marginBottom: 6 },
   orderMotion: { fontSize: 15, fontStyle: "italic", color: "var(--accent)", marginBottom: 8 },
   orderDesc: { fontSize: 14.5, lineHeight: 1.7, color: "var(--ink-muted)" },
+  orderCalBtn: { marginTop: 14, background: "transparent", color: "var(--ink)", border: "1px solid var(--border)", padding: "7px 14px", fontFamily: utility, fontSize: 12, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", borderRadius: 2, display: "flex", alignItems: "center", gap: 7 },
 
   postGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 },
+  searchRow: { position: "relative", marginBottom: 24, maxWidth: 420 },
+  searchIcon: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-muted)", pointerEvents: "none" },
+  searchInput: { width: "100%", border: "1px solid var(--border)", background: "var(--surface)", padding: "11px 14px 11px 38px", fontSize: 15, color: "var(--ink-body)", borderRadius: 2 },
   postCard: { background: "var(--surface)", border: "1px solid var(--border)", padding: 26, cursor: "pointer" },
   postMeta: { fontFamily: utility, fontSize: 11.5, letterSpacing: 0.5, color: "var(--accent)", marginBottom: 10, textTransform: "uppercase" },
   postTitle: { fontFamily: serif, fontWeight: 700, fontSize: 20, color: "var(--ink)", marginBottom: 10 },
@@ -1319,6 +1516,13 @@ const styles = {
   galleryPhotoTile: { position: "relative", aspectRatio: "4/3", overflow: "hidden", border: "1px solid var(--border)", borderRadius: 2 },
   galleryPhotoImg: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   galleryPhotoCaption: { position: "absolute", left: 0, right: 0, bottom: 0, background: "linear-gradient(transparent, rgba(15,24,48,0.82))", color: "#FFFFFF", fontFamily: utility, fontSize: 11.5, padding: "20px 12px 10px", textAlign: "center" },
+  lightbox: { position: "fixed", inset: 0, background: "rgba(4,8,16,0.92)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 16px" },
+  lightboxStage: { display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: "min(1100px, 90vw)" },
+  lightboxImg: { maxWidth: "100%", maxHeight: "78vh", objectFit: "contain", border: "1px solid var(--border)", borderRadius: 4 },
+  lightboxPlate: { width: 320, height: 240, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4 },
+  lightboxCaption: { color: "#E6E9F2", fontFamily: utility, fontSize: 13, letterSpacing: 0.4 },
+  lightboxClose: { position: "absolute", top: 18, right: 18, width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 },
+  lightboxNav: { position: "absolute", top: "50%", transform: "translateY(-50%)", width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", color: "#FFFFFF", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 },
 
   form: { display: "flex", flexDirection: "column", gap: 6, marginTop: 20 },
   label: { fontFamily: utility, fontSize: 12, letterSpacing: 0.5, color: "var(--ink)", fontWeight: 600, marginTop: 12, textTransform: "uppercase" },
