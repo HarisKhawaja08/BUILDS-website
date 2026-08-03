@@ -75,6 +75,9 @@ const SEED_POSTS = [
   },
 ];
 
+const SEED_EVENT_IDS = new Set(SEED_EVENTS.map((e) => e.id));
+const SEED_POST_IDS = new Set(SEED_POSTS.map((p) => p.id));
+
 function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -196,8 +199,8 @@ export default function BuildsSite() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const [events, setEvents] = useState(SEED_EVENTS);
-  const [posts, setPosts] = useState(SEED_POSTS);
+  const [events, setEvents] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [images, setImages] = useState([]);
   const [ready, setReady] = useState(false);
@@ -264,10 +267,22 @@ export default function BuildsSite() {
           window.storage.list("builds:submissions:app:", true).catch(() => ({ keys: [] })),
           window.storage.list("builds:gallery:img:", true).catch(() => ({ keys: [] })),
         ]);
-        if (ev?.value) setEvents(JSON.parse(ev.value));
-        else await window.storage.set("builds:events", JSON.stringify(SEED_EVENTS), true);
-        if (po?.value) setPosts(JSON.parse(po.value));
-        else await window.storage.set("builds:posts", JSON.stringify(SEED_POSTS), true);
+        if (ev?.value) {
+          const parsed = Array.isArray(JSON.parse(ev.value)) ? JSON.parse(ev.value) : [];
+          const cleaned = parsed.filter((e) => !SEED_EVENT_IDS.has(e.id));
+          if (cleaned.length !== parsed.length) {
+            await window.storage.set("builds:events", JSON.stringify(cleaned), true);
+          }
+          setEvents(cleaned);
+        }
+        if (po?.value) {
+          const parsed = Array.isArray(JSON.parse(po.value)) ? JSON.parse(po.value) : [];
+          const cleaned = parsed.filter((p) => !SEED_POST_IDS.has(p.id));
+          if (cleaned.length !== parsed.length) {
+            await window.storage.set("builds:posts", JSON.stringify(cleaned), true);
+          }
+          setPosts(cleaned);
+        }
 
         const subItems = await Promise.all(
           (subIdx?.keys || []).map(async (k) => {
