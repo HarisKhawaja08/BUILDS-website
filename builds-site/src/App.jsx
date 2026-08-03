@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Menu, X, Calendar, BookOpen, Users, Image as ImageIcon, Mail,
   Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, MapPin, Clock,
-  Instagram, MessageCircle, Sun, Moon, Pencil, Download,
+  Instagram, MessageCircle, Sun, Moon, Pencil, Download, Scale,
 } from "lucide-react";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
