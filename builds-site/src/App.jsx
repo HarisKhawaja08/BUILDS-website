@@ -375,8 +375,8 @@ export default function BuildsSite() {
     const errs = {};
     if (!f.name.trim() || !/^[\p{L}][\p{L} .'\-]*$/u.test(f.name.trim()) || f.name.trim().length < 2)
       errs.name = "Enter a valid name (letters only).";
-    if (!/^\d{3}-\d{6}-\d{3}$/.test(f.enrollment.trim()))
-      errs.enrollment = "Enrollment must follow the format 000-111111-222.";
+    if (!/^\d{2}-\d{6}-\d{3}$/.test(f.enrollment.trim()))
+      errs.enrollment = "Enrollment must follow the format 00-222222-111.";
     if (!f.department.trim() || !/^[\p{L}][\p{L} .&()\-]*$/u.test(f.department.trim()) || f.department.trim().length < 2)
       errs.department = "Enter a valid department (letters only).";
     if (f.semester.trim() && !/^\d{1,2}(st|nd|rd|th)?$/i.test(f.semester.trim()))
@@ -1083,7 +1083,7 @@ function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError, joinErro
         {joinErrors.name && <div style={styles.fieldError}>{joinErrors.name}</div>}
 
         <label style={styles.label}>Enrollment number</label>
-        <input style={field("enrollment")} value={joinForm.enrollment} placeholder="e.g. 001-134221-222" maxLength={13} autoComplete="off"
+        <input style={field("enrollment")} value={joinForm.enrollment} placeholder="e.g. 01-222222-111" maxLength={13} autoComplete="off"
           onChange={(e) => setJoinForm({ ...joinForm, enrollment: e.target.value })} />
         {joinErrors.enrollment && <div style={styles.fieldError}>{joinErrors.enrollment}</div>}
 
