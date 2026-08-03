@@ -215,6 +215,7 @@ export default function BuildsSite() {
   const [joinForm, setJoinForm] = useState({ name: "", enrollment: "", department: "", semester: "", interests: [], reason: "", email: "", whatsapp: "" });
   const [joinSent, setJoinSent] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [joinErrors, setJoinErrors] = useState({});
 
   /* ---------- real admin auth (Firebase) — persists across refresh ---------- */
   useEffect(() => {
@@ -370,9 +371,30 @@ export default function BuildsSite() {
 
   const submitJoin = async (e) => {
     e.preventDefault();
-    if (!joinForm.name || !joinForm.enrollment || !joinForm.department || !joinForm.email || !joinForm.whatsapp || joinForm.interests.length === 0) return;
+    const f = joinForm;
+    const errs = {};
+    if (!f.name.trim() || !/^[\p{L}][\p{L} .'\-]*$/u.test(f.name.trim()) || f.name.trim().length < 2)
+      errs.name = "Enter a valid name (letters only).";
+    if (!/^\d{3}-\d{6}-\d{3}$/.test(f.enrollment.trim()))
+      errs.enrollment = "Enrollment must follow the format 000-111111-222.";
+    if (!f.department.trim() || !/^[\p{L}][\p{L} .&()\-]*$/u.test(f.department.trim()) || f.department.trim().length < 2)
+      errs.department = "Enter a valid department (letters only).";
+    if (f.semester.trim() && !/^\d{1,2}(st|nd|rd|th)?$/i.test(f.semester.trim()))
+      errs.semester = "Enter a valid semester (e.g. 3rd or 5).";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim()))
+      errs.email = "Enter a valid email address.";
+    const wa = f.whatsapp.replace(/[\s\-()]/g, "");
+    if (!/^\+?\d{9,15}$/.test(wa))
+      errs.whatsapp = "Enter a valid WhatsApp number (digits only, e.g. 03001234567).";
+    if (f.interests.length === 0)
+      errs.interests = "Select at least one wing.";
+    if (Object.keys(errs).length > 0) {
+      setJoinErrors(errs);
+      return;
+    }
+    setJoinErrors({});
     const id = "s" + Date.now();
-    const entry = { ...joinForm, date: new Date().toISOString() };
+    const entry = { ...joinForm, whatsapp: wa, date: new Date().toISOString() };
     setJoinError("");
     try {
       await window.storage.set(`builds:submissions:app:${id}`, JSON.stringify(entry), true);
@@ -555,7 +577,7 @@ export default function BuildsSite() {
         {tab === "blog" && <Blog posts={posts} openPost={openPost} setOpenPost={setOpenPost} />}
         {tab === "team" && <TheHouse />}
         {tab === "gallery" && <Gallery images={images} />}
-        {tab === "join" && <Join joinForm={joinForm} setJoinForm={setJoinForm} submitJoin={submitJoin} joinSent={joinSent} joinError={joinError} />}
+        {tab === "join" && <Join joinForm={joinForm} setJoinForm={setJoinForm} submitJoin={submitJoin} joinSent={joinSent} joinError={joinError} joinErrors={joinErrors} />}
         {tab === "login" && (
           <AdminLogin emailInput={emailInput} setEmailInput={setEmailInput} pwInput={pwInput} setPwInput={setPwInput} handleLogin={handleLogin} loginError={loginError} />
         )}
@@ -1041,7 +1063,11 @@ function Gallery({ images = [] }) {
   );
 }
 
-function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError }) {
+function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError, joinErrors }) {
+  const field = (key) => ({
+    ...styles.input,
+    ...(joinErrors[key] ? styles.inputError : {}),
+  });
   return (
     <section style={{ ...styles.section, maxWidth: 640 }}>
       <div style={styles.sectionEyebrow}>MEMBERSHIP</div>
@@ -1050,35 +1076,41 @@ function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError }) {
         Fill in the form below and a member of the secretariat will reach out with your
         induction session details.
       </p>
-      <form onSubmit={submitJoin} style={styles.form}>
+      <form onSubmit={submitJoin} style={styles.form} noValidate>
         <label style={styles.label}>Full name</label>
-        <input style={styles.input} value={joinForm.name}
-          onChange={(e) => setJoinForm({ ...joinForm, name: e.target.value })} required />
+        <input style={field("name")} value={joinForm.name} autoComplete="name"
+          onChange={(e) => setJoinForm({ ...joinForm, name: e.target.value })} />
+        {joinErrors.name && <div style={styles.fieldError}>{joinErrors.name}</div>}
 
         <label style={styles.label}>Enrollment number</label>
-        <input style={styles.input} value={joinForm.enrollment} placeholder="e.g. 01-134221-000"
-          onChange={(e) => setJoinForm({ ...joinForm, enrollment: e.target.value })} required />
+        <input style={field("enrollment")} value={joinForm.enrollment} placeholder="e.g. 001-134221-222" maxLength={13} autoComplete="off"
+          onChange={(e) => setJoinForm({ ...joinForm, enrollment: e.target.value })} />
+        {joinErrors.enrollment && <div style={styles.fieldError}>{joinErrors.enrollment}</div>}
 
         <div style={{ display: "flex", gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label style={styles.label}>Department</label>
-            <input style={styles.input} value={joinForm.department} placeholder="e.g. BSCS"
-              onChange={(e) => setJoinForm({ ...joinForm, department: e.target.value })} required />
+            <input style={field("department")} value={joinForm.department} placeholder="e.g. BSCS" autoComplete="organization"
+              onChange={(e) => setJoinForm({ ...joinForm, department: e.target.value })} />
+            {joinErrors.department && <div style={styles.fieldError}>{joinErrors.department}</div>}
           </div>
           <div style={{ flex: 1 }}>
             <label style={styles.label}>Semester</label>
-            <input style={styles.input} value={joinForm.semester} placeholder="e.g. 3rd"
+            <input style={field("semester")} value={joinForm.semester} placeholder="e.g. 3rd" inputMode="numeric" autoComplete="off"
               onChange={(e) => setJoinForm({ ...joinForm, semester: e.target.value })} />
+            {joinErrors.semester && <div style={styles.fieldError}>{joinErrors.semester}</div>}
           </div>
         </div>
 
         <label style={styles.label}>Email</label>
-        <input type="email" style={styles.input} value={joinForm.email}
-          onChange={(e) => setJoinForm({ ...joinForm, email: e.target.value })} required />
+        <input type="email" style={field("email")} value={joinForm.email} autoComplete="email"
+          onChange={(e) => setJoinForm({ ...joinForm, email: e.target.value })} />
+        {joinErrors.email && <div style={styles.fieldError}>{joinErrors.email}</div>}
 
         <label style={styles.label}>WhatsApp contact</label>
-        <input type="tel" style={styles.input} value={joinForm.whatsapp} placeholder="e.g. 03001234567"
-          onChange={(e) => setJoinForm({ ...joinForm, whatsapp: e.target.value })} required />
+        <input type="tel" style={field("whatsapp")} value={joinForm.whatsapp} placeholder="e.g. 03001234567" inputMode="tel" autoComplete="tel"
+          onChange={(e) => setJoinForm({ ...joinForm, whatsapp: e.target.value })} />
+        {joinErrors.whatsapp && <div style={styles.fieldError}>{joinErrors.whatsapp}</div>}
 
         <label style={styles.label}>Which wing would you like to join?</label>
         <div style={styles.checkRow}>
@@ -1101,6 +1133,7 @@ function Join({ joinForm, setJoinForm, submitJoin, joinSent, joinError }) {
         <p style={{ fontSize: 12.5, color: "var(--ink-faint)", marginTop: -2 }}>
           Select both if you'd like to be part of both wings.
         </p>
+        {joinErrors.interests && <div style={styles.fieldError}>{joinErrors.interests}</div>}
 
         <label style={styles.label}>Why do you want to join?</label>
         <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical" }} value={joinForm.reason}
@@ -1544,6 +1577,8 @@ const styles = {
   checkRow: { display: "flex", gap: 20, marginTop: 4 },
   checkOption: { display: "flex", alignItems: "center", gap: 8, fontSize: 15, color: "var(--ink-body)", fontFamily: body, cursor: "pointer" },
   input: { border: "1px solid var(--border)", background: "var(--surface)", padding: "11px 14px", fontSize: 15, color: "var(--ink-body)", borderRadius: 2 },
+  inputError: { borderColor: "#E05555" },
+  fieldError: { color: "#E05555", fontSize: 12.5, marginTop: 4, fontWeight: 500 },
   successNote: { background: "var(--success-bg)", border: "1px solid var(--success-border)", color: "var(--success-text)", padding: "10px 14px", fontSize: 14, marginTop: 12, borderRadius: 2 },
   errorNote: { color: "var(--accent)", fontSize: 13, marginTop: 6 },
   emptyNote: { fontFamily: utility, fontSize: 14, color: "var(--ink-faint)", fontStyle: "italic" },
