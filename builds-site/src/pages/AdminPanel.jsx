@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, LogOut, Download } from "lucide-react";
 import { styles, fmtDate } from "../ui.js";
-export default function AdminPanel({ events, addEvent, updateEvent, removeEvent, posts, addPost, updatePost, removePost, submissions, removeSubmission, images, addImage, removeImage, logout }) {
-  const [panel, setPanel] = useState("events");
-  const emptyEvent = { title: "", date: "", time: "", venue: "", motion: "", description: "" };
+export default function AdminPanel({ posts, addPost, updatePost, removePost, submissions, removeSubmission, images, addImage, removeImage, logout }) {
+  const [panel, setPanel] = useState("blog");
   const emptyPost = { title: "", author: "", excerpt: "", content: "" };
-  const [ev, setEv] = useState(emptyEvent);
   const [post, setPost] = useState(emptyPost);
-  const [editingEventId, setEditingEventId] = useState(null);
   const [editingPostId, setEditingPostId] = useState(null);
   const [imgCaption, setImgCaption] = useState("");
   const [imgPreview, setImgPreview] = useState(null);
@@ -30,19 +27,6 @@ export default function AdminPanel({ events, addEvent, updateEvent, removeEvent,
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const startEditEvent = (item) => {
-    setEditingEventId(item.id);
-    setEv({ title: item.title, date: item.date, time: item.time, venue: item.venue, motion: item.motion, description: item.description });
-  };
-  const cancelEditEvent = () => { setEditingEventId(null); setEv(emptyEvent); };
-  const submitEvent = (e) => {
-    e.preventDefault();
-    if (!ev.title || !ev.date) return;
-    if (editingEventId) { updateEvent(editingEventId, ev); setEditingEventId(null); }
-    else addEvent(ev);
-    setEv(emptyEvent);
   };
 
   const startEditPost = (item) => {
@@ -103,59 +87,12 @@ export default function AdminPanel({ events, addEvent, updateEvent, removeEvent,
       </div>
 
       <div style={styles.adminTabs}>
-        {[["events", "Order Paper"], ["blog", "Dispatches"], ["gallery", `Gallery (${images.length})`], ["submissions", `Applications (${submissions.length})`]].map(([id, label]) => (
+        {[["blog", "Dispatches"], ["gallery", `Gallery (${images.length})`], ["submissions", `Applications (${submissions.length})`]].map(([id, label]) => (
           <div key={id} style={{ ...styles.adminTab, ...(panel === id ? styles.adminTabActive : {}) }} onClick={() => setPanel(id)}>
             {label}
           </div>
         ))}
       </div>
-
-      {panel === "events" && (
-        <div className="admin-grid" style={styles.adminGrid}>
-          <form onSubmit={submitEvent} style={styles.form}>
-            <label style={styles.label}>Title</label>
-            <input style={styles.input} value={ev.title} onChange={(e) => setEv({ ...ev, title: e.target.value })} />
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Date</label>
-                <input type="date" style={styles.input} value={ev.date} onChange={(e) => setEv({ ...ev, date: e.target.value })} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Time</label>
-                <input style={styles.input} placeholder="4:00 PM" value={ev.time} onChange={(e) => setEv({ ...ev, time: e.target.value })} />
-              </div>
-            </div>
-            <label style={styles.label}>Venue</label>
-            <input style={styles.input} value={ev.venue} onChange={(e) => setEv({ ...ev, venue: e.target.value })} />
-            <label style={styles.label}>Motion / theme</label>
-            <input style={styles.input} value={ev.motion} onChange={(e) => setEv({ ...ev, motion: e.target.value })} />
-            <label style={styles.label}>Description</label>
-            <textarea style={{ ...styles.input, minHeight: 80 }} value={ev.description} onChange={(e) => setEv({ ...ev, description: e.target.value })} />
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <button className="btn-maroon" style={{ ...styles.btnPrimary, alignSelf: "flex-start" }}>
-                {editingEventId ? <><Pencil size={16} /> Save Changes</> : <><Plus size={16} /> Add to Order Paper</>}
-              </button>
-              {editingEventId && (
-                <span style={styles.cancelEditLink} onClick={cancelEditEvent}>Cancel</span>
-              )}
-            </div>
-          </form>
-          <div>
-            {events.map((e) => (
-              <div key={e.id} style={styles.adminListItem}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{e.title}</div>
-                  <div style={{ fontSize: 13, color: "var(--ink-muted)" }}>{fmtDate(e.date)} · {e.venue}</div>
-                </div>
-                <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
-                  <Pencil size={16} style={{ cursor: "pointer", color: "var(--ink-muted)" }} onClick={() => startEditEvent(e)} />
-                  <Trash2 size={17} style={{ cursor: "pointer", color: "var(--accent)" }} onClick={() => removeEvent(e.id)} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {panel === "blog" && (
         <div style={styles.adminGrid}>

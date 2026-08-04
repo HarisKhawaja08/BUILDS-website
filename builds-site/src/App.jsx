@@ -5,6 +5,7 @@ import {
 } from "react-router-dom";
 import { getFirebase, ensureStorage } from "./firebase-async.js";
 import { styles, PATH_TITLES } from "./ui.js";
+import { fetchCalendarEvents } from "./calendar.js";
 import Home from "./pages/Home.jsx";
 import About from "./pages/About.jsx";
 import OrderPaper from "./pages/OrderPaper.jsx";
@@ -84,7 +85,6 @@ const SEED_POSTS = [
   },
 ];
 
-const SEED_EVENT_IDS = new Set(SEED_EVENTS.map((e) => e.id));
 const SEED_POST_IDS = new Set(SEED_POSTS.map((p) => p.id));
 
 function fmtDate(iso) {
@@ -201,7 +201,7 @@ export default function BuildsSite() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState(SEED_EVENTS);
   const [posts, setPosts] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [images, setImages] = useState([]);
@@ -265,19 +265,17 @@ export default function BuildsSite() {
     (async () => {
       try {
         await ensureStorage();
-        const [ev, po, subIdx, galIdx] = await Promise.all([
-          window.storage.get("builds:events", true).catch(() => null),
+        const [calEvents, po, subIdx, galIdx] = await Promise.all([
+          fetchCalendarEvents().catch((e) => {
+            console.error("calendar load failed", e);
+            return null;
+          }),
           window.storage.get("builds:posts", true).catch(() => null),
           window.storage.list("builds:submissions:app:", true).catch(() => ({ keys: [] })),
           window.storage.list("builds:gallery:img:", true).catch(() => ({ keys: [] })),
         ]);
-        if (ev?.value) {
-          const parsed = Array.isArray(JSON.parse(ev.value)) ? JSON.parse(ev.value) : [];
-          const cleaned = parsed.filter((e) => !SEED_EVENT_IDS.has(e.id));
-          if (cleaned.length !== parsed.length) {
-            await window.storage.set("builds:events", JSON.stringify(cleaned), true);
-          }
-          setEvents(cleaned.length ? cleaned : SEED_EVENTS);
+        if (calEvents !== null) {
+          setEvents(calEvents);
         } else {
           setEvents(SEED_EVENTS);
         }
@@ -325,11 +323,6 @@ export default function BuildsSite() {
     })();
   }, []);
 
-  const persistEvents = useCallback(async (next) => {
-    setEvents(next);
-    try { await window.storage.set("builds:events", JSON.stringify(next), true); }
-    catch (e) { console.error(e); }
-  }, []);
   const persistPosts = useCallback(async (next) => {
     setPosts(next);
     try { await window.storage.set("builds:posts", JSON.stringify(next), true); }
@@ -349,9 +342,6 @@ export default function BuildsSite() {
     }
   };
 
-  const addEvent = (ev) => persistEvents([...events, { ...ev, id: "e" + Date.now() }]);
-  const updateEvent = (id, patch) => persistEvents(events.map((e) => (e.id === id ? { ...e, ...patch } : e)));
-  const removeEvent = (id) => persistEvents(events.filter((e) => e.id !== id));
   const addPost = (p) => persistPosts([{ ...p, id: "p" + Date.now() }, ...posts]);
   const updatePost = (id, patch) => persistPosts(posts.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   const removePost = (id) => persistPosts(posts.filter((p) => p.id !== id));
@@ -604,7 +594,6 @@ export default function BuildsSite() {
             path="/admin"
             element={isAdmin ? (
               <AdminPanel
-                events={events} addEvent={addEvent} updateEvent={updateEvent} removeEvent={removeEvent}
                 posts={posts} addPost={addPost} updatePost={updatePost} removePost={removePost}
                 submissions={submissions} removeSubmission={removeSubmission}
                 images={images} addImage={addImage} removeImage={removeImage}
