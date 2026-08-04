@@ -81,7 +81,21 @@
     </script>
   </head>
   <body>
+    <div id="builds-splash">
+      <img src="/icon-512.png" alt="" style="width:72px;height:auto;" />
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;letter-spacing:.5px;color:var(--ink);">BUILDS</div>
+      <div style="font-family:system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);">Literary &amp; Debates Society</div>
+    </div>
     <div id="root"></div>
+    <style>
+      #builds-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+        background: var(--bg); color: var(--ink);
+        transition: opacity .3s ease, visibility .3s ease;
+      }
+      #builds-splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    </style>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

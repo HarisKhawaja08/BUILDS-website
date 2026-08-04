@@ -1,5 +1,5 @@
-const CACHE = "builds-site-v1";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest"];
+const CACHE = "builds-site-v2";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-512.png", "./icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
