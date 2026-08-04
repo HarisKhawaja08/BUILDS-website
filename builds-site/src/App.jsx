@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Menu, X, Sun, Moon, Monitor, Check, Instagram, MessageCircle } from "lucide-react";
 import {
   Routes, Route, Link, Navigate, useNavigate, useLocation,
@@ -6,16 +6,14 @@ import {
 import { getFirebase, ensureStorage } from "./firebase-async.js";
 import { styles, PATH_TITLES } from "./ui.js";
 import Home from "./pages/Home.jsx";
-
-const About = lazy(() => import("./pages/About.jsx"));
-const OrderPaper = lazy(() => import("./pages/OrderPaper.jsx"));
-const Blog = lazy(() => import("./pages/Blog.jsx").then((m) => ({ default: m.Blog })));
-const BlogPost = lazy(() => import("./pages/Blog.jsx").then((m) => ({ default: m.BlogPost })));
-const TheHouse = lazy(() => import("./pages/TheHouse.jsx"));
-const Gallery = lazy(() => import("./pages/Gallery.jsx"));
-const Join = lazy(() => import("./pages/Join.jsx"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin.jsx"));
-const AdminPanel = lazy(() => import("./pages/AdminPanel.jsx"));
+import About from "./pages/About.jsx";
+import OrderPaper from "./pages/OrderPaper.jsx";
+import { Blog, BlogPost } from "./pages/Blog.jsx";
+import TheHouse from "./pages/TheHouse.jsx";
+import Gallery from "./pages/Gallery.jsx";
+import Join from "./pages/Join.jsx";
+import AdminLogin from "./pages/AdminLogin.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";
 
 
 /* ---------------------------------------------------------
@@ -592,8 +590,7 @@ export default function BuildsSite() {
       </header>
 
       <main className="main-wrap" style={styles.main}>
-        <Suspense fallback={null}>
-          <Routes>
+        <Routes>
           <Route path="/" element={<Home events={events} />} />
           <Route path="/about" element={<About />} />
           <Route path="/events" element={<OrderPaper events={events} />} />
@@ -619,7 +616,6 @@ export default function BuildsSite() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </Suspense>
       </main>
 
       <footer style={styles.footer}>
