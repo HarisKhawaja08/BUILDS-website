@@ -4,6 +4,9 @@ import {
   Lock, Plus, Trash2, LogOut, Quote, ChevronRight, ChevronDown, ChevronLeft, MapPin, Clock,
   Instagram, MessageCircle, Sun, Moon, Monitor, Check, Search, Pencil, Download, Scale,
 } from "lucide-react";
+import {
+  Routes, Route, Link, Navigate, useNavigate, useParams, useLocation,
+} from "react-router-dom";
 import { auth } from "./firebase.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
@@ -86,7 +89,7 @@ function fmtDate(iso) {
 function eventStartDate(ev) {
   const [y, mo, d] = (ev.date || "2026-01-01").split("-").map(Number);
   let h = 0, m = 0;
-  const t = (ev.time || "").trim();
+  const t = (ev.time || "").trim().split(/\s*[-–—]\s*/)[0].trim();
   const m2 = t.match(/^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?$/);
   if (m2) {
     h = parseInt(m2[1], 10);
@@ -95,6 +98,14 @@ function eventStartDate(ev) {
     if (m2[3] && m2[3].toLowerCase() === "am" && h === 12) h = 0;
   }
   return new Date(Date.UTC(y, mo - 1, d, h, m));
+}
+
+function nextUpcomingEvent(events) {
+  if (!events.length) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
+  return sorted.find((ev) => new Date(ev.date + "T00:00:00") >= today) || sorted[0];
 }
 
 function icsTimestamp(d) {
@@ -149,21 +160,21 @@ function urduStyle(text) {
     : {};
 }
 
-const BASE_TITLE = "BUILDS — Bahria University Islamabad Literary & Debates Society";
-const TAB_TITLES = {
-  home: "Home",
-  about: "About",
-  events: "Order Paper",
-  blog: "Dispatches",
-  team: "The House",
-  gallery: "Gallery",
-  join: "Join",
-  login: "Secretariat Login",
-  admin: "Secretariat",
+const PATH_TITLES = {
+  "/": "Home",
+  "/about": "About",
+  "/events": "Order Paper",
+  "/blog": "Dispatches",
+  "/team": "The House",
+  "/gallery": "Gallery",
+  "/join": "Join",
+  "/login": "Secretariat Login",
+  "/admin": "Secretariat",
 };
 
 export default function BuildsSite() {
-  const [tab, setTab] = useState("home");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
   const [theme, setTheme] = useState(() => {
     try {
@@ -210,8 +221,6 @@ export default function BuildsSite() {
   const [pwInput, setPwInput] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  const [openPost, setOpenPost] = useState(null);
-
   const [joinForm, setJoinForm] = useState({ name: "", enrollment: "", department: "", semester: "", interests: [], reason: "", email: "", whatsapp: "" });
   const [joinSent, setJoinSent] = useState(false);
   const [joinError, setJoinError] = useState("");
@@ -230,7 +239,7 @@ export default function BuildsSite() {
     let idleTimer;
     const handleIdleLogout = () => {
       signOut(auth);
-      setTab("home");
+      navigate("/");
     };
     const resetIdleTimer = () => {
       clearTimeout(idleTimer);
@@ -243,7 +252,7 @@ export default function BuildsSite() {
       clearTimeout(idleTimer);
       activityEvents.forEach((evt) => window.removeEventListener(evt, resetIdleTimer));
     };
-  }, [isAdmin]);
+  }, [isAdmin, navigate]);
 
   /* ---------- favicon (best effort — may not apply outside a full browser tab) ---------- */
   useEffect(() => {
@@ -274,7 +283,9 @@ export default function BuildsSite() {
           if (cleaned.length !== parsed.length) {
             await window.storage.set("builds:events", JSON.stringify(cleaned), true);
           }
-          setEvents(cleaned);
+          setEvents(cleaned.length ? cleaned : SEED_EVENTS);
+        } else {
+          setEvents(SEED_EVENTS);
         }
         if (po?.value) {
           const parsed = Array.isArray(JSON.parse(po.value)) ? JSON.parse(po.value) : [];
@@ -282,7 +293,9 @@ export default function BuildsSite() {
           if (cleaned.length !== parsed.length) {
             await window.storage.set("builds:posts", JSON.stringify(cleaned), true);
           }
-          setPosts(cleaned);
+          setPosts(cleaned.length ? cleaned : SEED_POSTS);
+        } else {
+          setPosts(SEED_POSTS);
         }
 
         const subItems = await Promise.all(
@@ -312,6 +325,8 @@ export default function BuildsSite() {
         setImages(galItems.filter(Boolean).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
       } catch (e) {
         console.error("storage load failed", e);
+        setEvents(SEED_EVENTS);
+        setPosts(SEED_POSTS);
       } finally {
         setReady(true);
       }
@@ -335,7 +350,7 @@ export default function BuildsSite() {
     try {
       await signInWithEmailAndPassword(auth, emailInput.trim(), pwInput);
       setPwInput("");
-      setTab("admin");
+      navigate("/admin");
     } catch (e) {
       setLoginError("Incorrect email or password.");
     }
@@ -409,19 +424,30 @@ export default function BuildsSite() {
   };
 
   const nav = [
-    { id: "home", label: "Home" },
-    { id: "about", label: "About" },
-    { id: "events", label: "Order Paper" },
-    { id: "blog", label: "Dispatches" },
-    { id: "team", label: "The House" },
-    { id: "gallery", label: "Gallery" },
-    { id: "join", label: "Join" },
+    { id: "home", path: "/", label: "Home" },
+    { id: "about", path: "/about", label: "About" },
+    { id: "events", path: "/events", label: "Order Paper" },
+    { id: "blog", path: "/blog", label: "Dispatches" },
+    { id: "team", path: "/team", label: "The House" },
+    { id: "gallery", path: "/gallery", label: "Gallery" },
+    { id: "join", path: "/join", label: "Join" },
   ];
 
+  /* ---------- per-page document title ---------- */
   useEffect(() => {
-    const title = TAB_TITLES[tab];
-    document.title = title ? `${title} — BUILDS` : BASE_TITLE;
-  }, [tab]);
+    let title = PATH_TITLES[location.pathname] || "Home";
+    if (location.pathname.startsWith("/blog/")) {
+      const pid = location.pathname.slice("/blog/".length);
+      const p = posts.find((x) => x.id === pid);
+      if (p) title = p.title;
+    }
+    document.title = `${title} — BUILDS`;
+  }, [location.pathname, posts]);
+
+  /* ---------- scroll to top on navigation ---------- */
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <div style={styles.page} data-theme={effectiveTheme}>
@@ -495,28 +521,28 @@ export default function BuildsSite() {
       {/* ---------- HEADER ---------- */}
       <header style={styles.header}>
         <div style={styles.headerInner}>
-          <div style={styles.brandRow} onClick={() => { setTab("home"); setNavOpen(false); }}>
+          <div style={styles.brandRow} onClick={() => { navigate("/"); setNavOpen(false); }}>
             <img src={`data:image/png;base64,${LOGO_B64}`} alt="BUILDS — Literary and Debates Club, Bahria University Islamabad" style={styles.logoImg} />
           </div>
 
           <nav className="nav-desktop" style={styles.navDesktop}>
             {nav.map((n) => (
-              <span
+              <Link
                 key={n.id}
-                className={`builds-link${tab === n.id ? " active" : ""}`}
+                to={n.path}
+                className={`builds-link${(n.path === "/blog" ? location.pathname.startsWith("/blog") : location.pathname === n.path) ? " active" : ""}`}
                 style={styles.navLink}
-                onClick={() => setTab(n.id)}
               >
                 {n.label}
-              </span>
+              </Link>
             ))}
-            <span
+            <Link
               className="builds-link"
               style={{ ...styles.navLink, color: "var(--accent)" }}
-              onClick={() => setTab(isAdmin ? "admin" : "login")}
+              to={isAdmin ? "/admin" : "/login"}
             >
               {isAdmin ? "Admin" : "Secretariat"}
-            </span>
+            </Link>
           </nav>
 
           <div style={styles.themeMenuWrap} ref={themeMenuRef}>
@@ -560,10 +586,10 @@ export default function BuildsSite() {
         </div>
         {navOpen && (
           <div style={styles.navMobile}>
-            {[...nav, { id: isAdmin ? "admin" : "login", label: isAdmin ? "Admin" : "Secretariat" }].map((n) => (
-              <div key={n.id} style={styles.navMobileLink} onClick={() => { setTab(n.id); setNavOpen(false); }}>
+            {[...nav, { id: isAdmin ? "admin" : "login", path: isAdmin ? "/admin" : "/login", label: isAdmin ? "Admin" : "Secretariat" }].map((n) => (
+              <Link key={n.id} to={n.path} style={styles.navMobileLink} onClick={() => setNavOpen(false)}>
                 {n.label}
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -571,24 +597,35 @@ export default function BuildsSite() {
       </header>
 
       <main className="main-wrap" style={styles.main}>
-        {tab === "home" && <Home setTab={setTab} events={events} />}
-        {tab === "about" && <About />}
-        {tab === "events" && <OrderPaper events={events} />}
-        {tab === "blog" && <Blog posts={posts} openPost={openPost} setOpenPost={setOpenPost} />}
-        {tab === "team" && <TheHouse />}
-        {tab === "gallery" && <Gallery images={images} />}
-        {tab === "join" && <Join joinForm={joinForm} setJoinForm={setJoinForm} submitJoin={submitJoin} joinSent={joinSent} joinError={joinError} joinErrors={joinErrors} />}
-        {tab === "login" && (
-          <AdminLogin emailInput={emailInput} setEmailInput={setEmailInput} pwInput={pwInput} setPwInput={setPwInput} handleLogin={handleLogin} loginError={loginError} />
-        )}
-        {tab === "admin" && isAdmin && (
-          <AdminPanel
-            events={events} addEvent={addEvent} updateEvent={updateEvent} removeEvent={removeEvent}
-            posts={posts} addPost={addPost} updatePost={updatePost} removePost={removePost}
-            submissions={submissions} removeSubmission={removeSubmission}
-            images={images} addImage={addImage} removeImage={removeImage}
-            logout={() => { signOut(auth); setTab("home"); }}
+        {!ready ? (
+          <div style={styles.loadingWrap} aria-live="polite">Loading…</div>
+        ) : (
+        <Routes>
+          <Route path="/" element={<Home events={events} />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/events" element={<OrderPaper events={events} />} />
+          <Route path="/blog" element={<Blog posts={posts} />} />
+          <Route path="/blog/:id" element={<BlogPost posts={posts} />} />
+          <Route path="/team" element={<TheHouse />} />
+          <Route path="/gallery" element={<Gallery images={images} />} />
+          <Route path="/join" element={<Join joinForm={joinForm} setJoinForm={setJoinForm} submitJoin={submitJoin} joinSent={joinSent} joinError={joinError} joinErrors={joinErrors} />} />
+          <Route path="/login" element={<AdminLogin emailInput={emailInput} setEmailInput={setEmailInput} pwInput={pwInput} setPwInput={setPwInput} handleLogin={handleLogin} loginError={loginError} />} />
+          <Route
+            path="/admin"
+            element={isAdmin ? (
+              <AdminPanel
+                events={events} addEvent={addEvent} updateEvent={updateEvent} removeEvent={removeEvent}
+                posts={posts} addPost={addPost} updatePost={updatePost} removePost={removePost}
+                submissions={submissions} removeSubmission={removeSubmission}
+                images={images} addImage={addImage} removeImage={removeImage}
+                logout={() => { signOut(auth); navigate("/"); }}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )}
           />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
         )}
       </main>
 
@@ -609,7 +646,7 @@ export default function BuildsSite() {
             <div>
               <div style={styles.footerHead}>Society</div>
               {nav.map((n) => (
-                <div key={n.id} style={styles.footerLink} onClick={() => setTab(n.id)}>{n.label}</div>
+                <Link key={n.id} to={n.path} style={styles.footerLink}>{n.label}</Link>
               ))}
             </div>
             <div>
@@ -633,8 +670,9 @@ export default function BuildsSite() {
 
 /* ======================= PAGES ======================= */
 
-function Home({ setTab, events }) {
-  const next = events[0];
+function Home({ events }) {
+  const navigate = useNavigate();
+  const next = nextUpcomingEvent(events);
   return (
     <div>
       <section className="hero-section" style={styles.hero}>
@@ -647,10 +685,10 @@ function Home({ setTab, events }) {
           Bahria's sharpest arguments and finest sentences are put to the floor.
         </p>
         <div style={styles.heroBtnRow}>
-          <button className="btn-maroon" style={styles.btnPrimary} onClick={() => setTab("join")}>
+          <button className="btn-maroon" style={styles.btnPrimary} onClick={() => navigate("/join")}>
             Join the Society <ChevronRight size={16} />
           </button>
-          <button className="btn-outline" style={styles.btnOutline} onClick={() => setTab("events")}>
+          <button className="btn-outline" style={styles.btnOutline} onClick={() => navigate("/events")}>
             View Order Paper
           </button>
         </div>
@@ -667,7 +705,7 @@ function Home({ setTab, events }) {
               <div style={styles.nextEventTitle}>{next.title}</div>
               <div style={styles.nextEventMotion}><Quote size={14} style={{ marginRight: 6 }} />{next.motion}</div>
             </div>
-            <button className="btn-outline" style={styles.btnOutlineSmall} onClick={() => setTab("events")}>
+            <button className="btn-outline" style={styles.btnOutlineSmall} onClick={() => navigate("/events")}>
               Full Order Paper
             </button>
           </div>
@@ -762,19 +800,8 @@ function OrderPaper({ events }) {
   );
 }
 
-function Blog({ posts, openPost, setOpenPost }) {
+function Blog({ posts }) {
   const [q, setQ] = useState("");
-  const active = posts.find((p) => p.id === openPost);
-  if (active) {
-    return (
-      <section style={{ ...styles.section, maxWidth: 720 }}>
-        <div style={styles.backLink} onClick={() => setOpenPost(null)}>← All dispatches</div>
-        <div style={styles.sectionEyebrow}>{fmtDate(active.date)} · {active.author}</div>
-        <h2 style={{ ...styles.h2, ...urduStyle(active.title) }}>{active.title}</h2>
-        <p style={{ ...styles.bodyText, fontSize: 18, lineHeight: 1.8, ...urduStyle(active.content) }}>{active.content}</p>
-      </section>
-    );
-  }
   const term = q.trim().toLowerCase();
   const filtered = term
     ? posts.filter((p) => [p.title, p.excerpt, p.content, p.author].join(" ").toLowerCase().includes(term))
@@ -796,17 +823,42 @@ function Blog({ posts, openPost, setOpenPost }) {
       </div>
       <div className="post-grid" style={styles.postGrid}>
         {filtered.map((p) => (
-          <div key={p.id} className="ev-card" style={styles.postCard} onClick={() => setOpenPost(p.id)}>
-            <div style={styles.postMeta}>{fmtDate(p.date)} · {p.author}</div>
-            <div style={{ ...styles.postTitle, ...urduStyle(p.title) }}>{p.title}</div>
-            <div style={{ ...styles.postExcerpt, ...urduStyle(p.excerpt) }}>{p.excerpt}</div>
-            <div style={styles.readMore}>Read dispatch <ChevronRight size={14} /></div>
-          </div>
+          <Link key={p.id} to={`/blog/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+            <div className="ev-card" style={styles.postCard}>
+              <div style={styles.postMeta}>{fmtDate(p.date)} · {p.author}</div>
+              <div style={{ ...styles.postTitle, ...urduStyle(p.title) }}>{p.title}</div>
+              <div style={{ ...styles.postExcerpt, ...urduStyle(p.excerpt) }}>{p.excerpt}</div>
+              <div style={styles.readMore}>Read dispatch <ChevronRight size={14} /></div>
+            </div>
+          </Link>
         ))}
         {filtered.length === 0 && (
-          <div style={styles.emptyNote}>No dispatches match “{q.trim()}”.</div>
+          <div style={styles.emptyNote}>
+            {term ? `No dispatches match “${q.trim()}”.` : "No dispatches published yet."}
+          </div>
         )}
       </div>
+    </section>
+  );
+}
+
+function BlogPost({ posts }) {
+  const { id } = useParams();
+  const active = posts.find((p) => p.id === id);
+  if (!active) {
+    return (
+      <section style={styles.section}>
+        <Link to="/blog" style={styles.backLink}>← All dispatches</Link>
+        <div style={styles.emptyNote}>Dispatch not found.</div>
+      </section>
+    );
+  }
+  return (
+    <section style={{ ...styles.section, maxWidth: 720 }}>
+      <Link to="/blog" style={styles.backLink}>← All dispatches</Link>
+      <div style={styles.sectionEyebrow}>{fmtDate(active.date)} · {active.author}</div>
+      <h2 style={{ ...styles.h2, ...urduStyle(active.title) }}>{active.title}</h2>
+      <p style={{ ...styles.bodyText, fontSize: 18, lineHeight: 1.8, ...urduStyle(active.content) }}>{active.content}</p>
     </section>
   );
 }
@@ -1456,7 +1508,7 @@ const styles = {
   brandName: { fontFamily: serif, fontWeight: 700, fontSize: 20, letterSpacing: 0.5, color: "#16233F" },
   brandSub: { fontFamily: utility, fontSize: 11, letterSpacing: 0.4, color: "#5B6478", textTransform: "uppercase" },
   navDesktop: { display: "flex", gap: 28, alignItems: "center" },
-  navLink: { fontFamily: utility, fontSize: 12.5, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", color: "var(--ink)", fontWeight: 500 },
+  navLink: { fontFamily: utility, fontSize: 12.5, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", color: "var(--ink)", fontWeight: 500, textDecoration: "none" },
   hamburger: { display: "none", background: "none", border: "none", color: "var(--ink)", cursor: "pointer" },
   themeToggle: { display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: "50%", background: "transparent", border: "1px solid var(--border)", color: "var(--ink)", cursor: "pointer", flexShrink: 0 },
   themeMenuWrap: { position: "relative", marginLeft: 12, flexShrink: 0 },
@@ -1464,9 +1516,10 @@ const styles = {
   themeMenuOption: { display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 6, cursor: "pointer", color: "var(--ink)", fontFamily: utility, fontSize: 13.5, fontWeight: 500 },
   themeMenuOptionActive: { background: "var(--border)" },
   navMobile: { display: "flex", flexDirection: "column", background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "8px 24px 16px" },
-  navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "var(--ink)", padding: "14px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" },
+  navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "var(--ink)", padding: "14px 0", borderBottom: "1px solid var(--border)", cursor: "pointer", textDecoration: "none", display: "block" },
   headerRule: { height: 1, background: "var(--border)", maxWidth: 1080, margin: "0 auto" },
   main: { maxWidth: 1080, margin: "0 auto", padding: "0 24px" },
+  loadingWrap: { fontFamily: utility, fontSize: 14, color: "var(--ink-faint)", padding: "48px 0", textAlign: "center" },
 
   hero: { padding: "72px 0 40px", maxWidth: 680 },
   heroEyebrow: { fontFamily: utility, fontSize: 12, letterSpacing: 2, color: "var(--accent)", fontWeight: 600, marginBottom: 18 },
@@ -1519,7 +1572,7 @@ const styles = {
   postTitle: { fontFamily: serif, fontWeight: 700, fontSize: 20, color: "var(--ink)", marginBottom: 10 },
   postExcerpt: { fontSize: 14.5, lineHeight: 1.7, color: "var(--ink-muted)", marginBottom: 14 },
   readMore: { fontFamily: utility, fontSize: 12.5, fontWeight: 600, color: "var(--ink)", display: "flex", alignItems: "center", gap: 4 },
-  backLink: { fontFamily: utility, fontSize: 13, color: "var(--accent)", cursor: "pointer", marginBottom: 20, fontWeight: 600 },
+  backLink: { fontFamily: utility, fontSize: 13, color: "var(--accent)", cursor: "pointer", marginBottom: 20, fontWeight: 600, textDecoration: "none", display: "inline-block" },
 
   teamGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
   teamCard: { background: "#FFFFFF", border: "1px solid #E2E6EF", padding: 24, textAlign: "center" },
@@ -1596,7 +1649,7 @@ const styles = {
   footerInner: { maxWidth: 1080, margin: "0 auto", padding: "48px 24px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 40 },
   footerCols: { display: "flex", gap: 60, flexWrap: "wrap" },
   footerHead: { fontFamily: utility, fontSize: 11.5, letterSpacing: 1, color: "#5C6B8C", textTransform: "uppercase", fontWeight: 600, marginBottom: 12 },
-  footerLink: { fontFamily: utility, fontSize: 13.5, color: "#E2E6EF", marginBottom: 8, cursor: "pointer" },
+  footerLink: { fontFamily: utility, fontSize: 13.5, color: "#E2E6EF", marginBottom: 8, cursor: "pointer", textDecoration: "none", display: "block" },
   footerSocialLink: { fontFamily: utility, fontSize: 13.5, color: "#E2E6EF", marginBottom: 8, display: "flex", alignItems: "center", gap: 7, textDecoration: "none" },
   footerWhatsappBtn: { fontFamily: utility, fontSize: 13, fontWeight: 600, letterSpacing: 0.3, color: "#16233F", background: "#FFFFFF", display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", padding: "9px 14px", borderRadius: 3, marginTop: 6 },
   footerBottom: { borderTop: "1px solid #2C3A5C", textAlign: "center", padding: "18px 0", fontFamily: utility, fontSize: 12, color: "#7C8399" },
