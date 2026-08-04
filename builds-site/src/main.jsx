@@ -1,4 +1,3 @@
-import "./storage-shim.js";
 import "@fontsource/noto-nastaliq-urdu";
 import React from "react";
 import ReactDOM from "react-dom/client";

@@ -7,8 +7,7 @@ import {
 import {
   Routes, Route, Link, Navigate, useNavigate, useParams, useLocation,
 } from "react-router-dom";
-import { auth } from "./firebase.js";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { getFirebase, ensureStorage } from "./firebase-async.js";
 
 /* ---------------------------------------------------------
    BUILDS — Bahria University Islamabad Literary & Debates Society
@@ -214,7 +213,6 @@ export default function BuildsSite() {
   const [posts, setPosts] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [images, setImages] = useState([]);
-  const [ready, setReady] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [emailInput, setEmailInput] = useState("");
@@ -228,8 +226,11 @@ export default function BuildsSite() {
 
   /* ---------- real admin auth (Firebase) — persists across refresh ---------- */
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => setIsAdmin(!!user));
-    return unsubscribe;
+    let unsubscribe;
+    getFirebase().then(({ auth, onAuthStateChanged }) => {
+      unsubscribe = onAuthStateChanged(auth, (user) => setIsAdmin(!!user));
+    });
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
   /* ---------- auto-logout after inactivity — protects the admin panel on shared/unlocked devices ---------- */
@@ -238,7 +239,7 @@ export default function BuildsSite() {
     const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes — adjust here if needed
     let idleTimer;
     const handleIdleLogout = () => {
-      signOut(auth);
+      getFirebase().then(({ auth, signOut }) => signOut(auth));
       navigate("/");
     };
     const resetIdleTimer = () => {
@@ -271,6 +272,7 @@ export default function BuildsSite() {
   useEffect(() => {
     (async () => {
       try {
+        await ensureStorage();
         const [ev, po, subIdx, galIdx] = await Promise.all([
           window.storage.get("builds:events", true).catch(() => null),
           window.storage.get("builds:posts", true).catch(() => null),
@@ -327,8 +329,6 @@ export default function BuildsSite() {
         console.error("storage load failed", e);
         setEvents(SEED_EVENTS);
         setPosts(SEED_POSTS);
-      } finally {
-        setReady(true);
       }
     })();
   }, []);
@@ -348,6 +348,7 @@ export default function BuildsSite() {
   const handleLogin = async () => {
     setLoginError("");
     try {
+      const { auth, signInWithEmailAndPassword } = await getFirebase();
       await signInWithEmailAndPassword(auth, emailInput.trim(), pwInput);
       setPwInput("");
       navigate("/admin");
@@ -597,9 +598,6 @@ export default function BuildsSite() {
       </header>
 
       <main className="main-wrap" style={styles.main}>
-        {!ready ? (
-          <div style={styles.loadingWrap} aria-live="polite">Loading…</div>
-        ) : (
         <Routes>
           <Route path="/" element={<Home events={events} />} />
           <Route path="/about" element={<About />} />
@@ -618,7 +616,7 @@ export default function BuildsSite() {
                 posts={posts} addPost={addPost} updatePost={updatePost} removePost={removePost}
                 submissions={submissions} removeSubmission={removeSubmission}
                 images={images} addImage={addImage} removeImage={removeImage}
-                logout={() => { signOut(auth); navigate("/"); }}
+                logout={() => { getFirebase().then(({ auth, signOut }) => signOut(auth)); navigate("/"); }}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -626,7 +624,6 @@ export default function BuildsSite() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        )}
       </main>
 
       <footer style={styles.footer}>
@@ -1519,7 +1516,6 @@ const styles = {
   navMobileLink: { fontFamily: utility, fontSize: 14, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600, color: "var(--ink)", padding: "14px 0", borderBottom: "1px solid var(--border)", cursor: "pointer", textDecoration: "none", display: "block" },
   headerRule: { height: 1, background: "var(--border)", maxWidth: 1080, margin: "0 auto" },
   main: { maxWidth: 1080, margin: "0 auto", padding: "0 24px" },
-  loadingWrap: { fontFamily: utility, fontSize: 14, color: "var(--ink-faint)", padding: "48px 0", textAlign: "center" },
 
   hero: { padding: "72px 0 40px", maxWidth: 680 },
   heroEyebrow: { fontFamily: utility, fontSize: 12, letterSpacing: 2, color: "var(--accent)", fontWeight: 600, marginBottom: 18 },
