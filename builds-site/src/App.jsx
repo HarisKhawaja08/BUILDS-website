@@ -5,10 +5,11 @@ import {
 } from "react-router-dom";
 import { getFirebase, ensureStorage } from "./firebase-async.js";
 import { styles, PATH_TITLES } from "./ui.js";
-import { fetchCalendarEvents } from "./calendar.js";
+import { fetchCalendarEvents, fetchYearEvents } from "./calendar.js";
 import Home from "./pages/Home.jsx";
 import About from "./pages/About.jsx";
 import OrderPaper from "./pages/OrderPaper.jsx";
+import Calendar from "./pages/Calendar.jsx";
 import { Blog, BlogPost } from "./pages/Blog.jsx";
 import TheHouse from "./pages/TheHouse.jsx";
 import Gallery from "./pages/Gallery.jsx";
@@ -202,6 +203,7 @@ export default function BuildsSite() {
   }, []);
 
   const [events, setEvents] = useState(SEED_EVENTS);
+  const [yearEvents, setYearEvents] = useState(SEED_EVENTS);
   const [posts, setPosts] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [images, setImages] = useState([]);
@@ -265,9 +267,13 @@ export default function BuildsSite() {
     (async () => {
       try {
         await ensureStorage();
-        const [calEvents, po, subIdx, galIdx] = await Promise.all([
+        const [calEvents, yearCal, po, subIdx, galIdx] = await Promise.all([
           fetchCalendarEvents().catch((e) => {
             console.error("calendar load failed", e);
+            return null;
+          }),
+          fetchYearEvents().catch((e) => {
+            console.error("year calendar load failed", e);
             return null;
           }),
           window.storage.get("builds:posts", true).catch(() => null),
@@ -278,6 +284,11 @@ export default function BuildsSite() {
           setEvents(calEvents);
         } else {
           setEvents(SEED_EVENTS);
+        }
+        if (yearCal !== null) {
+          setYearEvents(yearCal);
+        } else {
+          setYearEvents(SEED_EVENTS);
         }
         if (po?.value) {
           const parsed = Array.isArray(JSON.parse(po.value)) ? JSON.parse(po.value) : [];
@@ -410,6 +421,7 @@ export default function BuildsSite() {
     { id: "home", path: "/", label: "Home" },
     { id: "about", path: "/about", label: "About" },
     { id: "events", path: "/events", label: "Order Paper" },
+    { id: "calendar", path: "/calendar", label: "Calendar" },
     { id: "blog", path: "/blog", label: "Dispatches" },
     { id: "team", path: "/team", label: "The House" },
     { id: "gallery", path: "/gallery", label: "Gallery" },
@@ -584,6 +596,7 @@ export default function BuildsSite() {
           <Route path="/" element={<Home events={events} />} />
           <Route path="/about" element={<About />} />
           <Route path="/events" element={<OrderPaper events={events} />} />
+          <Route path="/calendar" element={<Calendar events={yearEvents} />} />
           <Route path="/blog" element={<Blog posts={posts} />} />
           <Route path="/blog/:id" element={<BlogPost posts={posts} />} />
           <Route path="/team" element={<TheHouse />} />

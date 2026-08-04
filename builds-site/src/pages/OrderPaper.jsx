@@ -1,13 +1,22 @@
-import { Calendar, Clock, MapPin, CalendarPlus } from "lucide-react";
+import { Calendar, Clock, MapPin, CalendarPlus, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { styles, roman, fmtDate, downloadICS } from "../ui.js";
+
+const ORDER_LIMIT = 3;
+
 export default function OrderPaper({ events }) {
-  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sorted = [...events]
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+    .filter((ev) => new Date(ev.date + "T00:00:00") >= today)
+    .slice(0, ORDER_LIMIT);
   return (
     <section style={styles.section}>
       <div style={styles.sectionEyebrow}>UPCOMING EVENTS</div>
       <h2 style={styles.h2}>The Order Paper</h2>
       <p style={{ ...styles.bodyText, maxWidth: 640 }}>
-        Every session BUILDS convenes is listed here, in the order the House will hear it.
+        The next business to come before the House, in order. Every sitting of the session is listed on the BUILDS Calendar.
       </p>
       <div style={{ marginTop: 32 }}>
         {sorted.length === 0 && <div style={styles.emptyNote}>No business currently before the House.</div>}
@@ -30,6 +39,9 @@ export default function OrderPaper({ events }) {
           </div>
         ))}
       </div>
+      <Link to="/calendar" style={styles.calLink}>
+        View the full session calendar <ChevronRight size={14} />
+      </Link>
     </section>
   );
 }

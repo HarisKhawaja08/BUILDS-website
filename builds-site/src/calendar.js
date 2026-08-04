@@ -46,20 +46,20 @@ function toEvent(item) {
   };
 }
 
-/* Returns:
-     null  — not configured yet (no API key); callers fall back to seed events
-     []    — configured, calendar is public, but no upcoming events
-   Throws if the API call fails (e.g. calendar not public, bad key). */
-export async function fetchCalendarEvents() {
+/* Shared fetch: returns event objects sorted by date, or null when the
+   calendar is not configured yet (no API key) so callers can fall back to
+   seed events. Throws if the API call fails (calendar not public, bad key). */
+async function getEvents({ timeMin, timeMax, maxResults }) {
   if (!CALENDAR_API_KEY) return null;
 
   const params = new URLSearchParams({
     key: CALENDAR_API_KEY,
     singleEvents: "true",
     orderBy: "startTime",
-    maxResults: "250",
-    timeMin: new Date().toISOString(),
+    maxResults: String(maxResults),
+    timeMin,
   });
+  if (timeMax) params.set("timeMax", timeMax);
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params.toString()}`;
 
   const res = await fetch(url);
@@ -73,4 +73,19 @@ export async function fetchCalendarEvents() {
     .filter((i) => i.status !== "cancelled" && (i.start?.dateTime || i.start?.date))
     .map(toEvent)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+}
+
+/* Upcoming events only — powers the Order Paper and the home-page card. */
+export function fetchCalendarEvents() {
+  return getEvents({ timeMin: new Date().toISOString(), maxResults: 250 });
+}
+
+/* The whole current session year (Jan 1 → Dec 31) — powers the BUILDS Calendar. */
+export function fetchYearEvents() {
+  const now = new Date();
+  return getEvents({
+    timeMin: new Date(now.getFullYear(), 0, 1).toISOString(),
+    timeMax: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).toISOString(),
+    maxResults: 2500,
+  });
 }
