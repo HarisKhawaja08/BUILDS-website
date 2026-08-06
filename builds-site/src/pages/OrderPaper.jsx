@@ -30,7 +30,7 @@ export default function OrderPaper({ events }) {
                 <span><MapPin size={13} style={{ marginRight: 5, position: "relative", top: 2 }} />{ev.venue}</span>
               </div>
               <div style={styles.orderTitle}>{ev.title}</div>
-              <div style={styles.orderMotion}>“{ev.motion}”</div>
+              {ev.motion && <div style={styles.orderMotion}>“{ev.motion}”</div>}
               <div style={styles.orderDesc}>{ev.description}</div>
               <button className="btn-outline" style={styles.orderCalBtn} onClick={() => downloadICS(ev)}>
                 <CalendarPlus size={14} /> Add to calendar

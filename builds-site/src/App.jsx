@@ -267,29 +267,11 @@ export default function BuildsSite() {
     (async () => {
       try {
         await ensureStorage();
-        const [calEvents, yearCal, po, subIdx, galIdx] = await Promise.all([
-          fetchCalendarEvents().catch((e) => {
-            console.error("calendar load failed", e);
-            return null;
-          }),
-          fetchYearEvents().catch((e) => {
-            console.error("year calendar load failed", e);
-            return null;
-          }),
+        const [po, subIdx, galIdx] = await Promise.all([
           window.storage.get("builds:posts", true).catch(() => null),
           window.storage.list("builds:submissions:app:", true).catch(() => ({ keys: [] })),
           window.storage.list("builds:gallery:img:", true).catch(() => ({ keys: [] })),
         ]);
-        if (calEvents !== null) {
-          setEvents(calEvents);
-        } else {
-          setEvents(SEED_EVENTS);
-        }
-        if (yearCal !== null) {
-          setYearEvents(yearCal);
-        } else {
-          setYearEvents(SEED_EVENTS);
-        }
         if (po?.value) {
           const parsed = Array.isArray(JSON.parse(po.value)) ? JSON.parse(po.value) : [];
           const cleaned = parsed.filter((p) => !SEED_POST_IDS.has(p.id));
@@ -332,6 +314,18 @@ export default function BuildsSite() {
         setPosts(SEED_POSTS);
       }
     })();
+  }, []);
+
+  /* ---------- live calendar feeds (independent of Firestore) ---------- */
+  useEffect(() => {
+    let live = true;
+    fetchCalendarEvents()
+      .then((e) => { if (live && e !== null) setEvents(e); })
+      .catch((e) => console.error("calendar load failed", e));
+    fetchYearEvents()
+      .then((e) => { if (live && e !== null) setYearEvents(e); })
+      .catch((e) => console.error("year calendar load failed", e));
+    return () => { live = false; };
   }, []);
 
   const persistPosts = useCallback(async (next) => {
@@ -490,6 +484,9 @@ export default function BuildsSite() {
         .builds-link:hover:after, .builds-link.active:after { width: 100%; }
         .ev-card { transition: box-shadow .2s ease, transform .2s ease; }
         .ev-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(22,35,63,0.12); }
+        .cal-month-head:hover { border-color: var(--accent); }
+        .cal-chip { transition: border-color .15s ease, color .15s ease; }
+        .cal-chip:hover { border-left-color: var(--brand) !important; color: var(--accent); }
         .btn-maroon { transition: background .2s ease, transform .15s ease; }
         .btn-maroon:hover { background: var(--brand-hover) !important; transform: translateY(-1px); }
         .btn-outline:hover { background: var(--brand); color: #FFFFFF !important; }
@@ -509,6 +506,10 @@ export default function BuildsSite() {
         @media (max-width: 480px) {
           .main-wrap { padding-left: 16px !important; padding-right: 16px !important; }
           .hero-section { padding-top: 48px !important; }
+        }
+        @media (max-width: 560px) {
+          .cal-day-cell { min-height: 54px !important; padding: 4px 5px !important; }
+          .cal-day-cell .cal-chip { font-size: 0 !important; line-height: 0 !important; height: 6px !important; padding: 0 !important; }
         }
         button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       `}</style>

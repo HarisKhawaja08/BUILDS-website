@@ -7,6 +7,15 @@
   command = "npm run build"
   publish = "dist"
 
+# Proxy the (private) Google Calendar iCal feed on the site's own origin —
+# this avoids the browser being blocked by CORS, so no third-party CORS proxy
+# is needed in production. Must come before the SPA catch-all.
+[[redirects]]
+  from = "/calendar.ics"
+  to = "https://calendar.google.com/calendar/ical/b88e4510c95ae24a868da6c54313ea0824024364f0a24c96a8a9a44fc2071589%40group.calendar.google.com/private-c6305a6b8865f08b0c22f9c051363671/basic.ics"
+  status = 200
+  force = true
+
 # SPA catch-all — every route serves index.html
 [[redirects]]
   from = "/*"
