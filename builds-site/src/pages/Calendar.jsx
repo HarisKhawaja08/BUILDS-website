@@ -62,6 +62,10 @@ export default function Calendar({ events }) {
   const [active, setActive] = useState(now.getMonth());
   const [selected, setSelected] = useState(null);
 
+  /* Order the year starting from the current month so the open month is
+     the first thing on screen (a session runs Aug → Jul, not Jan → Dec). */
+  const orderedMonths = [...Array(12).keys()].map((i) => (now.getMonth() + i) % 12);
+
   const byMonth = {};
   for (const ev of events) {
     const k = (ev.date || "").slice(0, 7);
@@ -83,7 +87,8 @@ export default function Calendar({ events }) {
         Today is marked, past dates are muted, and clicking an event opens its full notice.
       </p>
       <div style={{ marginTop: 32 }}>
-        {MONTHS.map((name, m) => {
+        {orderedMonths.map((m) => {
+          const name = MONTHS[m];
           const monthEvents = byMonth[monthKey(m)] || [];
           const isOpen = active === m;
           const isCurrent = m === now.getMonth();

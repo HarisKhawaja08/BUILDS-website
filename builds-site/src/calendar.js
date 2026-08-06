@@ -33,6 +33,34 @@ function unescapeICS(s) {
   return (s || "").replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1");
 }
 
+function decodeEntities(s) {
+  return (s || "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)));
+}
+
+/* Google Calendar stores rich-text descriptions as HTML. Convert block
+   elements to line breaks, strip the tags, and decode entities so the text
+   reads cleanly (and the first paragraph becomes the motion). */
+function htmlToText(s) {
+  return decodeEntities(
+    (s || "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<\/div>/gi, "\n")
+      .replace(/<\/li>/gi, "\n")
+      .replace(/<\/tr>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+  );
+}
+
 /* ---------- ICS text → VEVENT maps ---------- */
 
 function unfold(text) {
@@ -234,10 +262,10 @@ export function parseICS(text) {
     const parsed = icsToLocal(start.value, start.tzid);
     if (!parsed) continue;
 
-    const descLines = unescapeICS(firstProp(vevent, "DESCRIPTION")?.value || "")
+    const descLines = htmlToText(unescapeICS(firstProp(vevent, "DESCRIPTION")?.value || ""))
       .split("\n").map((l) => l.trim()).filter(Boolean);
-    const title = unescapeICS(firstProp(vevent, "SUMMARY")?.value || "Untitled event").trim();
-    const venue = unescapeICS(firstProp(vevent, "LOCATION")?.value || "").trim();
+    const title = htmlToText(unescapeICS(firstProp(vevent, "SUMMARY")?.value || "Untitled event")).trim() || "Untitled event";
+    const venue = htmlToText(unescapeICS(firstProp(vevent, "LOCATION")?.value || "")).trim();
     const uid = firstProp(vevent, "UID")?.value || `${title}-${parsed.date}`;
 
     const exdates = new Set();
