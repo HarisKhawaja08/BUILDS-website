@@ -141,6 +141,13 @@ export const styles = {
   bodyText: { fontSize: 16.5, lineHeight: 1.85, color: "var(--ink-secondary)", marginBottom: 16 },
   twoCol: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 },
 
+  constitutionBox: { background: "var(--surface)", border: "1px solid var(--border)", borderRight: "4px solid var(--accent)", padding: "24px 28px", display: "flex", flexDirection: "column", gap: 10, height: "100%" },
+  aboutGrid: { display: "grid", gridTemplateColumns: "1fr 400px", gap: 40, alignItems: "start" },
+  constitutionEyebrow: { fontFamily: utility, fontSize: 11, letterSpacing: 2, color: "var(--accent)", fontWeight: 600 },
+  constitutionTitle: { fontFamily: serif, fontSize: 20, fontWeight: 700, color: "var(--ink)" },
+  constitutionText: { fontSize: 14.5, lineHeight: 1.75, color: "var(--ink-secondary)", margin: 0 },
+  constitutionBtn: { background: "transparent", color: "var(--ink)", border: "1.5px solid var(--ink)", padding: "11px 20px", fontFamily: utility, fontSize: 13, letterSpacing: 0.5, fontWeight: 600, cursor: "pointer", borderRadius: 2, alignSelf: "flex-start", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, marginTop: 4 },
+
   nextEventCard: { background: "var(--surface)", border: "1px solid var(--border)", borderLeft: "4px solid var(--accent)", padding: 28, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" },
   nextEventDate: { fontFamily: utility, fontSize: 12, letterSpacing: 1, color: "var(--accent)", fontWeight: 600, marginBottom: 6 },
   nextEventTitle: { fontFamily: serif, fontWeight: 700, fontSize: 22, color: "var(--ink)" },

@@ -1,21 +1,42 @@
+import { BookOpen, ExternalLink } from "lucide-react";
 import { styles } from "../ui.js";
 export default function About() {
   return (
     <section style={styles.section}>
       <div style={styles.sectionEyebrow}>BUILDS BSEAS, H-11</div>
       <h2 style={styles.h2}>Constitution &amp; Purpose</h2>
-      <div className="two-col" style={styles.twoCol}>
-        <p style={styles.bodyText}>
-          BUILDS — the Bahria University Islamabad Literary &amp; Debates Society — exists to give
-          students a floor: a place to test an argument out loud, to draft a sentence until it holds
-          weight, and to be answered by someone who has done the same.
-        </p>
-        <p style={styles.bodyText}>
-          We run weekly debate practice in British Parliamentary format, a literary critique circle,
-          and represent Bahria at inter-university tournaments across Islamabad and Rawalpindi.
-          Membership is open to all departments and all years; no prior debating or writing
-          experience is required, only the willingness to be disagreed with.
-        </p>
+      <div className="two-col" style={styles.aboutGrid}>
+        <div>
+          <p style={styles.bodyText}>
+            BUILDS — the Bahria University Islamabad Literary &amp; Debates Society — exists to give
+            students a floor: a place to test an argument out loud, to draft a sentence until it holds
+            weight, and to be answered by someone who has done the same.
+          </p>
+          <p style={styles.bodyText}>
+            We run weekly debate practice in British Parliamentary format, a literary critique circle,
+            and represent Bahria at inter-university tournaments across Islamabad and Rawalpindi.
+            Membership is open to all departments and all years; no prior debating or writing
+            experience is required, only the willingness to be disagreed with.
+          </p>
+        </div>
+        <div style={styles.constitutionBox}>
+          <div style={styles.constitutionEyebrow}>GOVERNING DOCUMENT</div>
+          <div style={styles.constitutionTitle}>The BUILDS Constitution</div>
+          <p style={styles.constitutionText}>
+            Every society runs on its rules, and BUILDS runs on a written one. Our constitution is the
+            standing order of the society — the articles governing elections, membership, the executive
+            body, and how the House conducts its business.
+          </p>
+          <a
+            className="btn-outline"
+            style={styles.constitutionBtn}
+            href="/constitution.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <BookOpen size={15} /> Read the Constitution <ExternalLink size={13} />
+          </a>
+        </div>
       </div>
       <div style={styles.ruleThin} />
       <div className="stats-row" style={styles.statsRow}>

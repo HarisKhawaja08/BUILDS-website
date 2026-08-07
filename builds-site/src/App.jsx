@@ -654,7 +654,7 @@ export default function BuildsSite() {
             </div>
           </div>
         </div>
-        <div style={styles.footerBottom}>© {new Date().getFullYear()} BUILDS. All motions reserved.</div>
+        <div style={styles.footerBottom}>© {new Date().getFullYear()} BUILDS. All motions reserved. &nbsp;|&nbsp; Website created and deployed by Muhammad Haris, GS 2026</div>
       </footer>
     </div>
   );
